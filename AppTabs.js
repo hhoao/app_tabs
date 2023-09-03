@@ -7,6 +7,10 @@ const Shell = imports.gi.Shell;
 const Clutter = imports.gi.Clutter;
 const Meta = imports.gi.Meta;
 const GLib = imports.gi.GLib;
+const Me = imports.misc.extensionUtils.getCurrentExtension()
+const CommonUtils = Me.imports.utils.common;
+const Logger = Me.imports.utils.log.Logger;
+const StyleHelper = Me.imports.style.helper.StyleHelper;
 
 var AppTabs = class AppTabs {
     enable(uuid) {
@@ -16,7 +20,6 @@ var AppTabs = class AppTabs {
         this._targetApp = null;
         this._updateWindowsLaterId = 0;
         this._startingApps = [];
-
         this._uuid = uuid;
 
         this._init_tabs();
@@ -30,30 +33,34 @@ var AppTabs = class AppTabs {
         global.window_manager.connectObject('switch-workspace',
             this._sync.bind(this), this);
     }
-    destroy() {
 
+    destroy() {
+        for (let tab of this._tabs_pool) {
+            tab.destroy();
+        }
+        this._tabs_pool = [];
+        this._current_tabs_count = 0;
+        this._targetApp = null;
+        this._updateWindowsLaterId = 0;
+        this._startingApps = [];
     }
+
     _init_tabs() {
         this._add_tabs_count(this._default_initial_tabs_count);
     }
 
-    _reset_tabs() {
+    _reset_all_tabs() {
         for (let i = 0; i < this._current_tabs_count; i++) {
             let tab = this._tabs_pool[i];
             tab.set_text('');
             tab.fadeOut();
             let current_window = tab.get_current_window();
             current_window?.disconnectObject(this);
+            tab.set_current_window(null);
+            // this._sort_tab();
+            this._current_tabs_count--;
+            // this._reset_tab(tab);
         }
-        this._current_tabs_count = 0;
-    }
-
-    getUuid() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-            const r = Math.random() * 16 | 0
-            const v = c === 'x' ? r : (r & 0x3 | 0x8)
-            return v.toString(16)
-        })
     }
 
     _add_tabs_count(count) {
@@ -64,7 +71,9 @@ var AppTabs = class AppTabs {
             });
             tab.hide()
             this._tabs_pool.push(tab);
-            Main.panel.addToStatusArea(this.getUuid(), tab, 10, 'left');
+            Main.panel.addToStatusArea(tab.get_uuid(), tab, 10, 'left');
+            let weige = Main.panel.statusArea[tab.get_uuid()];
+            weige.set_style('border-radius: 0px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
         }
     }
 
@@ -107,6 +116,7 @@ var AppTabs = class AppTabs {
         let targetApp = this._findTargetApp();
 
         if (this._targetApp !== targetApp) {
+            this._reset_all_tabs();
             this._targetApp?.disconnectObject(this);
 
             this._targetApp = targetApp;
@@ -138,19 +148,80 @@ var AppTabs = class AppTabs {
         }
         this._updateWindowsLaterId = 0;
 
-        this._reset_tabs();
-
         if (!this._targetApp) {
             return;
         }
 
-        const windows = this._targetApp.get_windows();
-        if (windows.length > this._tabs_pool.length) {
-            this._add_tabs_count(windows.length - this._tabs_pool.length);
+        const windows = this._targetApp.get_windows().filter(w => !w.skip_taskbar);
+        let info = this._get_windows_info(windows);
+        if (info[0].length === 0 && info[2].length === 0) {
+            return;
+        }
+        this._remove_tab(info[2]);
+        this._add_tabs(info[0])
+    }
+
+    /**
+     * @param windows
+     * @returns add_tabs, reserved_tabs_index, removed_tabs_index
+     * @private
+     */
+    _get_windows_info(windows) {
+        let add_tabs = []
+        let reserved_tabs_index = []
+        let removed_tabs_index = []
+        for (let i = 0; i < this._current_tabs_count; i++) {
+            let store_window = this._tabs_pool[i].get_current_window()
+            if (!windows.includes(store_window)) {
+                removed_tabs_index.push(i);
+            } else {
+                reserved_tabs_index.push(i);
+            }
         }
         for (let i = 0; i < windows.length; i++) {
-            let window = windows[i];
-            let tab = this._tabs_pool[i];
+            let is_add = true;
+            for (let index of reserved_tabs_index) {
+                if (this._tabs_pool[index].get_current_window() === windows[i]) {
+                    is_add = false;
+                    break;
+                }
+            }
+            if (is_add) {
+                add_tabs.push(windows[i]);
+            }
+        }
+        return [add_tabs, reserved_tabs_index, removed_tabs_index];
+    }
+
+    _reset_tab(tab) {
+        tab.set_text('');
+        tab.fadeOut();
+        let current_window = tab.get_current_window();
+        current_window?.disconnectObject(this);
+        tab.set_current_window(null);
+        this._sort_tab();
+        this._current_tabs_count--;
+    }
+
+    _sort_tab() {
+        for (let i = 0; i < this._current_tabs_count - 1; i++) {
+            if (!this._tabs_pool[i].is_active()) {
+                let tmp = this._tabs_pool[i];
+                this._tabs_pool[i] = this._tabs_pool[i+1];
+                this._tabs_pool[i+1] = tmp;
+            }
+        }
+    }
+
+    /**
+     * @param windows Needs to be added windows
+     */
+    _add_tabs(windows) {
+        if (this._current_tabs_count + windows.length > this._tabs_pool.length) {
+            this._add_tabs_count(this._current_tabs_count + windows.length - this._tabs_pool.length);
+        }
+        windows.forEach((window) => {
+            let tab = this._tabs_pool[this._current_tabs_count];
             tab.set_text(window.get_title() || this._targetApp.get_name())
             tab.fadeIn()
             window.connectObject('notify::title', () => {
@@ -158,7 +229,17 @@ var AppTabs = class AppTabs {
             }, this)
             tab.set_current_window(window);
             this._current_tabs_count++;
-        }
+        });
+    }
+
+    /**
+     * @param indexes Needs to be removed tab index in pool
+     * @private
+     */
+    _remove_tab(indexes) {
+        indexes.forEach((i) => {
+            this._reset_tab(this._tabs_pool[i]);
+        })
     }
 }
 
@@ -167,15 +248,26 @@ const AppTab = GObject.registerClass({
 }, class AppTab extends PanelMenu.Button {
     _init(param) {
         super._init(1.0, null, true);
+        this._default_tab_width = 64;
         this._current_window = null;
-        let bin = new St.Bin({name: 'appTabs'});
-        this.add_child(bin);
+        this._uuid = CommonUtils.generate_uuid();
+
+        this._bin = new St.Bin({name: 'appTabs', width: this._default_tab_width});
+        this.add_child(this._bin);
         this._label = new St.Label({
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.CENTER,
         });
-        bin.set_child(this._label);
+        this._bin.set_child(this._label);
         this.connect('key-press-event', this.on_button_press_event.bind(this));
+    }
+
+    is_active() {
+        return this._current_window == null;
+    }
+
+    get_uuid() {
+        return this._uuid;
     }
 
     on_button_press_event(actor, event) {
@@ -183,7 +275,8 @@ const AppTab = GObject.registerClass({
             this._current_window.activate(0);
             let colorResult = Clutter.Color.from_string('#818181')
             if (colorResult[0]) {
-                this.set_background_color(colorResult[1]);
+                let weige = Main.panel.statusArea[this.get_uuid()];
+                StyleHelper.set_style(weige, 'background-color: #818181')
             }
         }
     }
@@ -191,6 +284,7 @@ const AppTab = GObject.registerClass({
     set_current_window(window) {
         this._current_window = window;
     }
+
     get_current_window() {
         return this._current_window;
     }
