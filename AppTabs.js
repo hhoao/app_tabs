@@ -32,6 +32,18 @@ var AppTabs = class AppTabs {
             this._onAppStateChanged.bind(this), this);
         global.window_manager.connectObject('switch-workspace',
             this._sync.bind(this), this);
+        global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
+    }
+    on_focus_window_changed(param, param1) {
+        for (let i = 0; i < this._current_tabs_count; i++) {
+            if (this._tabs_pool[i].get_current_window() === param.focus_window) {
+                this._tabs_pool[i]
+                    .set_style('background: gray; margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+            } else  {
+                this._tabs_pool[i]
+                    .set_style('margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+            }
+        }
     }
 
     destroy() {
@@ -52,14 +64,7 @@ var AppTabs = class AppTabs {
     _reset_all_tabs() {
         for (let i = 0; i < this._current_tabs_count; i++) {
             let tab = this._tabs_pool[i];
-            tab.set_text('');
-            tab.fadeOut();
-            let current_window = tab.get_current_window();
-            current_window?.disconnectObject(this);
-            tab.set_current_window(null);
-            // this._sort_tab();
-            this._current_tabs_count--;
-            // this._reset_tab(tab);
+            this._reset_tab(tab);
         }
     }
 
@@ -72,8 +77,9 @@ var AppTabs = class AppTabs {
             tab.hide()
             this._tabs_pool.push(tab);
             Main.panel.addToStatusArea(tab.get_uuid(), tab, 10, 'left');
-            let weige = Main.panel.statusArea[tab.get_uuid()];
-            weige.set_style('border-radius: 0px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+            let button = Main.panel.statusArea[tab.get_uuid()];
+            button.set_style('margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+
         }
     }
 
@@ -193,13 +199,15 @@ var AppTabs = class AppTabs {
         return [add_tabs, reserved_tabs_index, removed_tabs_index];
     }
 
-    _reset_tab(tab) {
+    _reset_tab(tab, need_sort = true) {
         tab.set_text('');
         tab.fadeOut();
         let current_window = tab.get_current_window();
         current_window?.disconnectObject(this);
         tab.set_current_window(null);
-        this._sort_tab();
+        if (need_sort) {
+            this._sort_tab();
+        }
         this._current_tabs_count--;
     }
 
@@ -273,11 +281,11 @@ const AppTab = GObject.registerClass({
     on_button_press_event(actor, event) {
         if (this._current_window) {
             this._current_window.activate(0);
-            let colorResult = Clutter.Color.from_string('#818181')
-            if (colorResult[0]) {
-                let weige = Main.panel.statusArea[this.get_uuid()];
-                StyleHelper.set_style(weige, 'background-color: #818181')
-            }
+            // let colorResult = Clutter.Color.from_string('#818181')
+            // if (colorResult[0]) {
+            //     let weige = Main.panel.statusArea[this.get_uuid()];
+            //     StyleHelper.set_style(weige, 'background-color: #818181')
+            // }
         }
     }
 
