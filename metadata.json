@@ -2,6 +2,7 @@
   "name": "Application Tabs",
   "description": "Panel will include a different window tab for the same application that is currently launched",
   "uuid": "huanghaohhoa@163.com",
+  "settings-schema": "lock",
   "shell-version": [
     "44"
   ]
