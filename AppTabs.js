@@ -62,7 +62,8 @@ var AppTabs = class AppTabs {
     }
 
     _reset_all_tabs() {
-        for (let i = 0; i < this._current_tabs_count; i++) {
+        let tab_count =  this._current_tabs_count
+        for (let i = 0; i < tab_count; i++) {
             let tab = this._tabs_pool[i];
             this._reset_tab(tab);
         }
