@@ -9,22 +9,18 @@ const Meta = imports.gi.Meta;
 const Me = imports.misc.extensionUtils.getCurrentExtension()
 const CommonUtils = Me.imports.utils.common;
 const Logger = Me.imports.utils.log.Logger;
-const StyleHelper = Me.imports.style.helper.StyleHelper;
-const Mutex = Me.imports.utils.concurrency.Mutex;
-
 
 var AppTabs = GObject.registerClass(
     class AppTabs extends GObject.Object {
-        enable(uuid) {
-            this._uuid = uuid;
+        enable(config) {
             this._default_initial_tabs_count = 4;
             this._tabs_pool = [];
             this._current_tabs_count = 0;
             this._targetApp = null;
             this._updateWindowsLaterId = 0;
             this._startingApps = [];
-            this._lock = new Mutex("app-tabs");
             this._logger = new Logger("AppTabs")
+            this._style_config = config.get_style_config();
 
             this._init_tabs();
             Main.overview.connectObject(
@@ -39,18 +35,40 @@ var AppTabs = GObject.registerClass(
             global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
         }
 
+        get_tab_style(is_active = false, is_hover = false) {
+            let style = "";
+            let default_tab_style = {...this._style_config.default_tab_style};
+            if (is_hover) {
+                if (this._style_config["hover-background"]) {
+                    default_tab_style["hover-background"] = this._style_config["hover-background"];
+                }
+            } else if (is_active) {
+                if (this._style_config["active-background"]) {
+                    default_tab_style["background"] = this._style_config["active-background"];
+                }
+            }
+            for (let name in default_tab_style) {
+                style += name + ":" + default_tab_style[name]+ ";"                                      ;
+            }
+            return style;
+        }
+
+
         on_focus_window_changed(param) {
+            this.active_window_tab(param.focus_window)
+        }
+
+        active_window_tab(window) {
             for (let i = 0; i < this._current_tabs_count; i++) {
-                if (this._tabs_pool[i].get_current_window() === param.focus_window) {
+                if (this._tabs_pool[i].get_current_window() === window) {
                     this._tabs_pool[i]
-                        .set_style('background: #4b4b4b; margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+                        .set_style(this.get_tab_style(true));
                 } else {
                     this._tabs_pool[i]
-                        .set_style('margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
+                        .set_style(this.get_tab_style());
                 }
             }
         }
-
         destroy() {
             Main.overview?.disconnectObject(this);
             global.display?.disconnectObject(this)
@@ -65,7 +83,6 @@ var AppTabs = GObject.registerClass(
             this._targetApp = null;
             this._updateWindowsLaterId = 0;
             this._startingApps = [];
-            this._lock = null
             this._logger = null
         }
 
@@ -83,15 +100,12 @@ var AppTabs = GObject.registerClass(
 
         _add_tabs_count(count) {
             for (let i = 0; i < count; i++) {
-                const tab = new AppTab({
-                    y_expand: true,
-                    y_align: Clutter.ActorAlign.CENTER,
-                });
+                const tab = new AppTab();
+                tab.add_style_class_name('app-tab');
                 tab.hide()
+                tab.set_style(this.get_tab_style());
                 this._tabs_pool.push(tab);
                 Main.panel.addToStatusArea(tab.get_uuid(), tab, 10, 'left');
-                let button = Main.panel.statusArea[tab.get_uuid()];
-                button.set_style('margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
             }
         }
 
@@ -100,7 +114,7 @@ var AppTabs = GObject.registerClass(
             if (state !== Shell.AppState.STARTING)
                 this._startingApps = this._startingApps.filter(a => a !== app);
             else (state === Shell.AppState.STARTING)
-                this._startingApps.push(app);
+            this._startingApps.push(app);
             this._sync();
         }
 
@@ -115,33 +129,12 @@ var AppTabs = GObject.registerClass(
             this._sync();
         }
 
-        getAllApplications() {
-            const allApplications = [];
-
-            const appSys = Gio.AppInfo.get_all();
-
-            for (let i = 0; i < appSys.length; i++) {
-                const appInfo = appSys[i];
-                const appName = appInfo.get_display_name();
-                const appID = appInfo.get_id();
-
-                allApplications.push({
-                    name: appName,
-                    id: appID
-                });
-            }
-
-            return allApplications;
-        }
         _findTargetApp() {
             let workspaceManager = global.workspace_manager;
             let workspace = workspaceManager.get_active_workspace();
             let tracker = Shell.WindowTracker.get_default();
             let focusedApp = tracker.focus_app;
-            this._logger.info("focusedApp: " + focusedApp?.get_name())
-            this._logger.info("startingApps: " + this._startingApps)
             if (focusedApp && focusedApp.is_on_workspace(workspace)) {
-                this._logger.info("on workspace")
                 return focusedApp;
             }
 
@@ -166,9 +159,8 @@ var AppTabs = GObject.registerClass(
 
                 this._targetApp?.connectObject('notify::busy', this._sync.bind(this), this);
                 this._updateWindowsSection();
-
-                this._active_top_window()
             }
+            this._active_top_window()
         }
 
         _active_top_window() {
@@ -178,15 +170,7 @@ var AppTabs = GObject.registerClass(
                     top_window = this._tabs_pool[i].get_current_window();
                 }
             }
-            for (let i = 0; i < this._current_tabs_count; i++) {
-                if (this._tabs_pool[i].get_current_window() === top_window) {
-                    this._tabs_pool[i]
-                        .set_style('background: gray; margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
-                } else {
-                    this._tabs_pool[i]
-                        .set_style('margin: 4px 0; border-radius: 2px;border: 0; border-left: 1px; border-right: 1px;border-style: solid;border-color: gray;');
-                }
-            }
+            this.active_window_tab(top_window);
         }
 
         _queueUpdateWindowsSection() {
@@ -255,7 +239,7 @@ var AppTabs = GObject.registerClass(
             return [add_tabs, reserved_tabs_index, removed_tabs_index];
         }
 
-        _reset_tab(tab, need_sort = true) {
+        _reset_tab(tab) {
             tab.set_text(null);
             tab.fadeOut();
             let current_window = tab.get_current_window();
@@ -301,7 +285,6 @@ var AppTabs = GObject.registerClass(
 
         /**
          * @param indexes Needs to be removed tab index in pool
-         * @private
          */
         _remove_tab(indexes) {
             indexes.forEach((i) => {
@@ -313,7 +296,7 @@ var AppTabs = GObject.registerClass(
 const AppTab = GObject.registerClass({
     Signals: {'changed': {}}
 }, class AppTab extends PanelMenu.Button {
-    _init(param) {
+    _init(config) {
         super._init(1.0, null, true);
         this._default_tab_width = 100;
         this._current_window = null;
@@ -326,6 +309,7 @@ const AppTab = GObject.registerClass({
             x_align: Clutter.ActorAlign.CENTER,
         });
         this._bin.set_child(this._label);
+        // this._bin.set_style("width: 100%; margin: 4px; border-style: solid; border-color: gray; border: 0px; border-left-width: 2px; border-right-width: 2px;")
         this.connect('key-press-event', this.on_button_press_event.bind(this));
     }
 

@@ -1,6 +1,17 @@
-/* Add your custom extension styling here */
-/*.panel-button {*/
-/*    border: 0;*/
-/*    border-left: 1px;*/
-/*    border-right: 1px;*/
+/*.app-tab:before {*/
+/*    content: '';*/
+/*    position: absolute;*/
+/*    top: -5px;*/
+/*    left: 0;*/
+/*    box-shadow: 0 1px 0 #333;*/
+/*    width: 100%;*/
+/*    height: 1px;*/
+/*    background-color: #333;*/
 /*}*/
+
+/*.panel-button {*/
+/*    padding: 0;*/
+/*}*/
+/*.panel-button:hover {*/
+/*}*/
+

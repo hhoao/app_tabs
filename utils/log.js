@@ -4,18 +4,18 @@ var Logger = class AppTabs {
         this._message_prefix =`[Extension][AppTabs][${this._id}]`;
     }
     info(str) {
-        log(`${this._message_prefix}[INFO] ${str}`);
+        console.log(`${this._message_prefix}[INFO] ${str}`);
     }
 
     debug(str) {
-        log(`${this._message_prefix}[DEBUG] ${str}`);
+        console.debug(`${this._message_prefix}[DEBUG] ${str}`);
     }
 
     warn(str) {
-        log(`${this._message_prefix}[WARN] ${str}`);
+        console.warn(`${this._message_prefix}[WARN] ${str}`);
     }
 
     error(str) {
-        log(`${this._message_prefix}[ERROR] ${str}`);
+        console.error(`${this._message_prefix}[ERROR] ${str}`);
     }
 }
