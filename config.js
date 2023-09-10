@@ -5,18 +5,11 @@ var Config = class Config {
             max_tabs_width: 300,
             max_tab_width: 100,
             default_tab_style: {
-                'margin': '2px 0',
                 'border-radius': '8px',
-                'border': '0',
-                'border-left': '1px',
-                'border-right': '1px',
-                'overflow': 'hidden',
-                'text-overflow': 'clip',
+                'width': '100px',
             },
         }
-    }
-
-    get_style_config() {
-        return this.style_config;
+        this.side = 'left';
+        this.index = 10;
     }
 }

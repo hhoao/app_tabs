@@ -1,19 +1,23 @@
-const GObject       = imports.gi.GObject
+const GObject = imports.gi.GObject
 const Me = imports.misc.extensionUtils.getCurrentExtension()
 const AppTabs = Me.imports.AppTabs.AppTabs;
 const Logger = Me.imports.utils.log.Logger;
 const Config = Me.imports.config.Config;
+const Main = imports.ui.main;
 
 var AppTabsExtension = GObject.registerClass(
     class AppTabsExtension extends GObject.Object {
         _init() {
             this._logger = new Logger("AppTabsExtension")
             this._config = new Config();
-            this._tabs = new AppTabs();
+            this._tabs = new AppTabs({config: this._config});
         }
+
         activate() {
             this._logger.info("enabling extension...");
-            this._tabs.enable(this._config);
+            Main.panel.addToStatusArea(
+                'AppTabs', this._tabs, this._config.index, this._config.side
+            )
         }
 
         destroy() {

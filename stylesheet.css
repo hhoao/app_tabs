@@ -1,17 +1,23 @@
-/*.app-tab:before {*/
-/*    content: '';*/
-/*    position: absolute;*/
-/*    top: -5px;*/
-/*    left: 0;*/
-/*    box-shadow: 0 1px 0 #333;*/
-/*    width: 100%;*/
-/*    height: 1px;*/
-/*    background-color: #333;*/
-/*}*/
+.app-tabs {
+    width: 100px;
+}
 
-/*.panel-button {*/
-/*    padding: 0;*/
-/*}*/
-/*.panel-button:hover {*/
-/*}*/
+.app-tab {
+    margin: 2px 0;
+    padding-left: 10px;
+    padding-right: 10px;
+    text-overflow: clip;
+}
 
+.vertical-line {
+    width: 2px;
+    margin-top: 9px;
+    margin-bottom: 9px;
+    background-color: #4b4b4b;
+}
+
+.app-tab:hover {
+    background-color: #393939;
+    transition-duration: 0.3s;
+    transition-property: background-color;
+}
