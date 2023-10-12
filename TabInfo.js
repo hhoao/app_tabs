@@ -19,7 +19,7 @@ var TabInfo = class {
     }
 
     get_label(label) {
-        this._label = label;
+        return this._label;
     }
 
     is_active() {
@@ -72,7 +72,6 @@ var TabInfo = class {
             return;
 
         this._btn.hide();
-        log("divide: " + this._divide)
         if (this._divide) {
             this._divide.hide();
         }
