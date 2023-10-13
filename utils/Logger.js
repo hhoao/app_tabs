@@ -1,4 +1,4 @@
-var Logger = class AppTabs {
+export default class Logger {
     constructor(id) {
         this._id = id;
         this._message_prefix =`[Extension][AppTabs][${this._id}]`;

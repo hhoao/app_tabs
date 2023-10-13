@@ -1,6 +1,6 @@
-const Overview = imports.ui.overview;
-const Clutter = imports.gi.Clutter;
-var TabInfo = class {
+import Clutter from 'gi://Clutter';
+import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
+export default class TabInfo {
     constructor() {
         this._current_window = null;
         this._btn = null;

@@ -1,14 +1,15 @@
-const {GObject, St, GLib } = imports.gi;
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const Shell = imports.gi.Shell;
-const Clutter = imports.gi.Clutter;
-const Meta = imports.gi.Meta;
-const Me = imports.misc.extensionUtils.getCurrentExtension()
-const Logger = Me.imports.utils.log.Logger;
-const TabInfo = Me.imports.TabInfo.TabInfo;
+import St  from 'gi://St';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import Meta from 'gi://Meta';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import Logger from './utils/Logger.js';
+import TabInfo from './TabInfo.js';
 
-var AppTabs = GObject.registerClass({
+export const AppTabs = GObject.registerClass({
     Properties: {
         'config': GObject.ParamSpec.object(
             'config',
@@ -164,8 +165,9 @@ var AppTabs = GObject.registerClass({
         this._sync();
     }
     _queueFocusAppChanged() {
-        if (this._updateWindowsLaterId2)
+        if (this._updateWindowsLaterId2) {
             return;
+        }
 
         const laters = global.compositor.get_laters();
         this._updateWindowsLaterId2 = laters.add(
