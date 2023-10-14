@@ -1,6 +1,6 @@
 {
   "name": "Application Tabs",
-  "description": "Panel will include a different window tab for the same application that is currently launched",
+  "description": "Panel will include a different window tab for the same application that is currently launched.",
   "url": "https://github.com/hhoao/app_tabs",
   "uuid": "huanghaohhoa@163.com",
   "shell-version": [

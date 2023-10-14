@@ -1,6 +1,6 @@
 import Clutter from 'gi://Clutter';
 import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
-export default class TabInfo {
+export default class AppTab {
     constructor() {
         this._current_window = null;
         this._btn = null;
@@ -32,12 +32,6 @@ export default class TabInfo {
         return this._btn;
     }
 
-    on_button_press_event(actor, event) {
-        if (this._current_window) {
-            this._current_window.activate(0);
-        }
-    }
-
     set_current_window(window) {
         this._current_window = window;
     }
@@ -54,7 +48,7 @@ export default class TabInfo {
         return this._label.get_text();
     }
 
-    fadeIn() {
+    fade_in() {
         if (this._btn.visible)
             return;
 
@@ -67,7 +61,7 @@ export default class TabInfo {
         });
     }
 
-    fadeOut() {
+    fade_out() {
         if (!this._btn.visible)
             return;
 

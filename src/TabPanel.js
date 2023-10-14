@@ -1,4 +1,4 @@
-import St  from 'gi://St';
+import St from 'gi://St';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
@@ -7,9 +7,9 @@ import Meta from 'gi://Meta';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
-import TabInfo from './TabInfo.js';
+import AppTab from './AppTab.js';
 
-export const AppTabs = GObject.registerClass({
+export const TabPanel = GObject.registerClass({
     Properties: {
         'config': GObject.ParamSpec.object(
             'config',
@@ -19,7 +19,7 @@ export const AppTabs = GObject.registerClass({
             GObject.Object
         ),
     },
-}, class AppTabs extends PanelMenu.Button {
+}, class TabPanel extends PanelMenu.Button {
     _init(props) {
         super._init(1.0, null, true);
         this._config = props.config;
@@ -27,10 +27,9 @@ export const AppTabs = GObject.registerClass({
         this._default_initial_tabs_count = 4;
         this._tabs_pool = [];
         this._current_tabs_count = 0;
-        this._targetApp = null;
-        this._updateWindowsLaterId = 0;
-        this._startingApps = [];
-        this._logger = new Logger("AppTabs")
+        this._target_app = null;
+        this._update_windows_later_id = 0;
+        this._logger = new Logger("TabPanel")
 
         this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
         this.add_child(this._controls)
@@ -42,9 +41,7 @@ export const AppTabs = GObject.registerClass({
             'hiding', this._sync.bind(this),
             'showing', this._reset_all_tabs.bind(this), this);
         Shell.WindowTracker.get_default().connectObject('notify::focus-app',
-            this._queueFocusAppChanged.bind(this), this);
-        Shell.AppSystem.get_default().connectObject('app-state-changed',
-            this._onAppStateChanged.bind(this), this);
+            this._focus_app_changed.bind(this), this);
         global.window_manager.connectObject('switch-workspace',
             this._sync.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
@@ -70,7 +67,9 @@ export const AppTabs = GObject.registerClass({
 
 
     on_focus_window_changed(param) {
-        this.active_window_tab(param.focus_window)
+        if (param.focus_window != null) {
+            this.active_window_tab(param.focus_window)
+        }
     }
 
     active_window_tab(window) {
@@ -108,9 +107,8 @@ export const AppTabs = GObject.registerClass({
         }
         this._tabs_pool = [];
         this._current_tabs_count = 0;
-        this._targetApp = null;
-        this._updateWindowsLaterId = 0;
-        this._startingApps = [];
+        this._target_app = null;
+        this._update_windows_later_id = 0;
         this._logger = null
     }
 
@@ -143,50 +141,22 @@ export const AppTabs = GObject.registerClass({
             this._controls.add_child(btn);
             btn.hide();
 
-            let tabInfo = new TabInfo();
-            tabInfo.set_btn(btn);
-            tabInfo.set_label(label);
-            tabInfo.set_divide(divide);
-            this._tabs_pool.push(tabInfo);
+            let tab_info = new AppTab();
+            tab_info.set_btn(btn);
+            tab_info.set_label(label);
+            tab_info.set_divide(divide);
+            this._tabs_pool.push(tab_info);
             btn.connect('clicked', () => {
-                if (tabInfo.get_current_window()) {
-                    tabInfo.get_current_window().activate(0);
+                if (tab_info.get_current_window()) {
+                    tab_info.get_current_window().activate(0);
                 }
             });
         }
     }
 
-    _onAppStateChanged(appSys, app) {
-        let state = app.state;
-        if (state !== Shell.AppState.STARTING)
-            this._startingApps = this._startingApps.filter(a => a !== app);
-        else (state === Shell.AppState.STARTING)
-        this._startingApps.push(app);
-        this._sync();
-    }
-    _queueFocusAppChanged() {
-        if (this._updateWindowsLaterId2) {
-            return;
-        }
-
-        const laters = global.compositor.get_laters();
-        this._updateWindowsLaterId2 = laters.add(
-            Meta.LaterType.BEFORE_REDRAW, () => {
-                this._focusAppChanged();
-                return GLib.SOURCE_REMOVE;
-            });
-    }
-
-    _focusAppChanged() {
-        if (this._updateWindowsLaterId2) {
-            const laters = global.compositor.get_laters();
-            laters.remove(this._updateWindowsLaterId2);
-        }
-        this._updateWindowsLaterId2 = 0;
-
-        let tracker = Shell.WindowTracker.get_default();
-        let focusedApp = tracker.focus_app;
-        if (!focusedApp) {
+    _focus_app_changed() {
+        let focused_app = this._find_target_app();
+        if (!focused_app) {
             if (global.stage.key_focus != null) {
                 return;
             }
@@ -194,76 +164,58 @@ export const AppTabs = GObject.registerClass({
         this._sync();
     }
 
-    _findTargetApp() {
-        let workspaceManager = global.workspace_manager;
-        let workspace = workspaceManager.get_active_workspace();
+    _find_target_app() {
+        let workspace_manager = global.workspace_manager;
+        let workspace = workspace_manager.get_active_workspace();
         let tracker = Shell.WindowTracker.get_default();
-        let focusedApp = tracker.focus_app;
-        if (focusedApp && focusedApp.is_on_workspace(workspace)) {
-            return focusedApp;
+        let focused_app = tracker.focus_app;
+        if (focused_app && focused_app.is_on_workspace(workspace)) {
+            return focused_app;
         }
-
-        for (let i = 0; i < this._startingApps.length; i++) {
-            if (this._startingApps[i].is_on_workspace(workspace))
-                return this._startingApps[i];
-        }
-
         return null;
     }
 
     _sync(param) {
-        let targetApp = this._findTargetApp();
-        if (this._targetApp !== targetApp || Main.overview === param) {
+        let targetApp = this._find_target_app();
+        if (targetApp !== null && (this._target_app !== targetApp || Main.overview === param)) {
             this._reset_all_tabs();
-            this._targetApp?.disconnectObject(this);
+            this._target_app?.disconnectObject(this);
 
-            this._targetApp = targetApp;
+            this._target_app = targetApp;
 
-            this._targetApp?.connectObject('windows-changed',
-                () => this._queueUpdateWindowsSection(), this);
+            this._target_app?.connectObject('windows-changed',
+                () => this._queue_update_windows_section(), this);
 
-            this._targetApp?.connectObject('notify::busy', this._sync.bind(this), this);
-            this._updateWindowsSection();
+            this._target_app?.connectObject('notify::busy', this._sync.bind(this), this);
+            this._update_windows_section();
         }
-        this._active_top_window()
     }
 
-    _active_top_window() {
-        let top_window = this._tabs_pool[0].get_current_window()
-        for (let i = 0; i < this._current_tabs_count; i++) {
-            if (top_window.get_layer() < this._tabs_pool[i].get_current_window().get_layer()) {
-                top_window = this._tabs_pool[i].get_current_window();
-            }
-        }
-        this.active_window_tab(top_window);
-    }
-
-    _queueUpdateWindowsSection() {
-        if (this._updateWindowsLaterId)
+    _queue_update_windows_section() {
+        if (this._update_windows_later_id)
             return;
 
         const laters = global.compositor.get_laters();
-        this._updateWindowsLaterId = laters.add(
+        this._update_windows_later_id = laters.add(
             Meta.LaterType.BEFORE_REDRAW, () => {
-                this._updateWindowsSection();
+                this._update_windows_section();
                 return GLib.SOURCE_REMOVE;
             });
     }
 
-    _updateWindowsSection() {
-        if (this._updateWindowsLaterId) {
+    _update_windows_section() {
+        if (this._update_windows_later_id) {
             const laters = global.compositor.get_laters();
-            laters.remove(this._updateWindowsLaterId);
+            laters.remove(this._update_windows_later_id);
         }
-        this._updateWindowsLaterId = 0;
+        this._update_windows_later_id = 0;
 
-        if (!this._targetApp) {
+        if (!this._target_app) {
             return;
         }
 
-        const windows = this._targetApp.get_windows().filter(w => !w.skip_taskbar);
+        const windows = this._target_app.get_windows().filter(w => !w.skip_taskbar);
         let info = this._get_windows_info(windows);
-        this._logger.info(info[0] + ":" + info[1] + ":" + info[2])
         if (info[0].length > 0) {
             this._add_tabs_by_windows(info[0])
         }
@@ -271,11 +223,14 @@ export const AppTabs = GObject.registerClass({
             this._remove_tab(info[2]);
             this._sort_tab();
         }
+        if (info[2].length > 0 || info[0].length > 0) {
+            this.on_focus_window_changed(global.display)
+        }
     }
 
     /**
      * @param windows
-     * @returns add_tabs, reserved_tabs_index, removed_tabs_index
+     * @returns *[][], reserved_tabs_index, removed_tabs_index
      * @private
      */
     _get_windows_info(windows) {
@@ -308,7 +263,7 @@ export const AppTabs = GObject.registerClass({
 
     _reset_tab(tab) {
         tab.set_text(null);
-        tab.fadeOut();
+        tab.fade_out();
         let current_window = tab.get_current_window();
         current_window?.disconnectObject(this);
         tab.set_current_window(null);
@@ -340,8 +295,8 @@ export const AppTabs = GObject.registerClass({
         }
         windows.forEach((window) => {
             let tab = this._tabs_pool[this._current_tabs_count];
-            tab.set_text(window.get_title() || this._targetApp.get_name())
-            tab.fadeIn()
+            tab.set_text(window.get_title() || this._target_app.get_name())
+            tab.fade_in()
             window.connectObject('notify::title', () => {
                 tab.set_text(window.get_title() || this._app.get_name());
             }, this)
