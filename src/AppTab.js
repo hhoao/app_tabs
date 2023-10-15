@@ -1,35 +1,69 @@
 import Clutter from 'gi://Clutter';
 import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
-export default class AppTab {
-    constructor() {
+import St from 'gi://St';
+import GObject from 'gi://GObject';
+
+export const AppTab = GObject.registerClass({
+}, class AppTab extends St.Button {
+    _init(props) {
+        super._init({
+            x_expand: true,
+            y_expand: true,
+        });
         this._current_window = null;
-        this._btn = null;
-        this._label = null;
         this._divide = null;
+
+        this.add_style_class_name('app-tab')
+        this._controls = new St.BoxLayout({
+            x_expand: true,
+            y_expand: false,
+        })
+        this._controls.add_style_class_name("app-tab-controller");
+        this.add_actor(this._controls)
+        this._label = new St.Label({
+            text: 'label',
+            y_align: Clutter.ActorAlign.CENTER,
+            x_align: Clutter.ActorAlign.FILL,
+        });
+        this._label.add_style_class_name('app-tab-label');
+        const close_button = new St.Button({
+            label: '×',
+            y_align: Clutter.ActorAlign.CENTER,
+            x_align: Clutter.ActorAlign.END,
+        });
+        close_button.connect('clicked', () => {
+            if (this.get_current_window()) {
+                this.get_current_window().delete(0);
+            }
+        });
+        close_button.add_style_class_name('app-tab-close-button');
+        this._controls.add_child(this._label)
+        this._controls.add_child(close_button)
+
+        this.connect('clicked', () => {
+            if (this.get_current_window()) {
+                this.get_current_window().activate(0);
+            }
+        });
     }
 
     get_divide() {
         return this._divide;
     }
+
     set_divide(divide) {
         this._divide = divide;
     }
-    set_label(label) {
-        this._label = label;
-    }
 
-    get_label(label) {
-        return this._label;
+    hide_divide() {
+        this._divide.hide();
+    }
+    show_divide() {
+        this._divide.show();
     }
 
     is_active() {
         return this._current_window != null;
-    }
-    set_btn(btn) {
-        this._btn = btn;
-    }
-    get_btn(btn) {
-        return this._btn;
     }
 
     set_current_window(window) {
@@ -49,12 +83,12 @@ export default class AppTab {
     }
 
     fade_in() {
-        if (this._btn.visible)
+        if (this.visible) {
             return;
-
-        this._btn.show();
-        this._btn.remove_all_transitions();
-        this._btn.ease({
+        }
+        this.show();
+        this.remove_all_transitions();
+        this.ease({
             opacity: 255,
             duration: Overview.ANIMATION_TIME,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
@@ -62,18 +96,19 @@ export default class AppTab {
     }
 
     fade_out() {
-        if (!this._btn.visible)
+        if (!this.visible) {
             return;
+        }
 
-        this._btn.hide();
+        this.hide();
         if (this._divide) {
             this._divide.hide();
         }
-        this._btn.remove_all_transitions();
-        this._btn.ease({
+        this.remove_all_transitions();
+        this.ease({
             opacity: 0,
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             duration: Overview.ANIMATION_TIME,
         });
     }
-}
+})

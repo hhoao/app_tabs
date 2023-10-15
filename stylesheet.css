@@ -2,11 +2,14 @@
     width: 100px;
 }
 
+.app-tabs-box {
+    margin: 2px;
+}
+
 .app-tab {
-    margin: 2px 0;
+    margin: 4px 0;
     padding-left: 20px;
-    padding-right: 20px;
-    text-overflow: clip;
+    padding-right: 4px;
 }
 
 .vertical-line {
@@ -18,6 +21,22 @@
 
 .app-tab:hover {
     background-color: #393939;
+    transition-duration: 0.3s;
+    transition-property: background-color;
+}
+
+.app-tab-label {
+    max-width: 86px;
+    margin-right: 8px;
+}
+.app-tab-close-button {
+    padding-left: 6px;
+    padding-right: 6px;
+    border-radius: 16px;
+}
+
+.app-tab-close-button:hover {
+    background-color: #3b3b3b;
     transition-duration: 0.3s;
     transition-property: background-color;
 }

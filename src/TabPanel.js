@@ -2,12 +2,11 @@ import St from 'gi://St';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
-import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
-import AppTab from './AppTab.js';
+import {AppTab} from './AppTab.js';
 
 export const TabPanel = GObject.registerClass({
     Properties: {
@@ -31,10 +30,10 @@ export const TabPanel = GObject.registerClass({
         this._update_windows_later_id = 0;
         this._logger = new Logger("TabPanel")
 
-        this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
-        this.add_child(this._controls)
         this.add_style_class_name('app-tabs')
         this.remove_style_class_name('panel-button')
+        this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
+        this.add_child(this._controls)
         this._init_tabs();
 
         Main.overview.connectObject(
@@ -75,16 +74,15 @@ export const TabPanel = GObject.registerClass({
     active_window_tab(window) {
         for (let i = 0; i < this._current_tabs_count; i++) {
             if (this._tabs_pool[i].get_current_window() === window) {
-                this._tabs_pool[i].get_btn()
-                    .set_style(this.get_tab_style(true));
-                this._tabs_pool[i].get_divide().hide();
+                this._tabs_pool[i].set_style(this.get_tab_style(true));
+                this._tabs_pool[i].hide_divide();
             } else {
-                this._tabs_pool[i].get_btn()
+                this._tabs_pool[i]
                     .set_style(this.get_tab_style());
                 if (i > 0 && this._tabs_pool[i - 1].get_current_window() === window) {
-                    this._tabs_pool[i].get_divide().hide();
+                    this._tabs_pool[i].hide_divide();
                 } else {
-                    this._tabs_pool[i].get_divide().show();
+                    this._tabs_pool[i].show_divide();
                 }
             }
         }
@@ -98,12 +96,7 @@ export const TabPanel = GObject.registerClass({
         Shell.WindowTracker?.get_default().disconnectObject(this);
         Shell.AppSystem.get_default()?.disconnectObject(this);
         for (let tab of this._tabs_pool) {
-            if (tab.get_btn()) {
-                tab.get_btn().destroy();
-            }
-            if (tab.get_label()) {
-                tab.get_label().destroy();
-            }
+            tab.destroy();
         }
         this._tabs_pool = [];
         this._current_tabs_count = 0;
@@ -126,31 +119,16 @@ export const TabPanel = GObject.registerClass({
 
     _add_tabs(count) {
         for (let i = 0; i < count; i++) {
-            const divide = new St.Label();
+            let divide = new St.Label();
             divide.add_style_class_name('vertical-line');
-            this._controls.add_child(divide);
             divide.hide();
-            const label = new St.Label({
-                text: 'label',
-                y_align: Clutter.ActorAlign.CENTER,
-                x_align: Clutter.ActorAlign.CENTER,
-            });
-            const btn = new St.Button({track_hover: true})
-            btn.add_style_class_name('app-tab');
-            btn.add_actor(label);
-            this._controls.add_child(btn);
-            btn.hide();
 
-            let tab_info = new AppTab();
-            tab_info.set_btn(btn);
-            tab_info.set_label(label);
-            tab_info.set_divide(divide);
-            this._tabs_pool.push(tab_info);
-            btn.connect('clicked', () => {
-                if (tab_info.get_current_window()) {
-                    tab_info.get_current_window().activate(0);
-                }
-            });
+            let app_tab = new AppTab();
+            app_tab.set_divide(divide)
+            app_tab.hide();
+            this._controls.add_child(divide);
+            this._controls.add_child(app_tab);
+            this._tabs_pool.push(app_tab);
         }
     }
 

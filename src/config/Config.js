@@ -6,7 +6,7 @@ export default class Config {
             max_tab_width: 100,
             default_tab_style: {
                 'border-radius': '8px',
-                'width': '100px',
+                'margin-left': '2px',
             },
         }
         this.side = 'left';
