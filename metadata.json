@@ -1,6 +1,6 @@
 {
   "name": "Application Tabs",
-  "description": "Panel will include a different window tab for the same application that is currently launched.",
+  "description": "Panel will include a different window tab for the same application that is currently launched.1. You can see the application window intuitively\n2. Click tab to jump to the corresponding window immediately\n3. Click the Close button to close the window",
   "url": "https://github.com/hhoao/app_tabs",
   "uuid": "huanghaohhoa@163.com",
   "shell-version": [

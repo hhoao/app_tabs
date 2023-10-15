@@ -6,3 +6,8 @@
 
 ## Installation
 Clone this repository and copy it to path `.local/share/gnome-shell/extensions/`
+
+## Feature
+1. You can see the application window intuitively
+2. Click tab to jump to the corresponding window immediately
+3. Click the Close button to close the window
