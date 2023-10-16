@@ -5,7 +5,7 @@ import GObject from 'gi://GObject';
 
 export const AppTab = GObject.registerClass({
 }, class AppTab extends St.Button {
-    _init(props) {
+    _init() {
         super._init({
             x_expand: true,
             y_expand: true,
@@ -26,25 +26,37 @@ export const AppTab = GObject.registerClass({
             x_align: Clutter.ActorAlign.FILL,
         });
         this._label.add_style_class_name('app-tab-label');
-        const close_button = new St.Button({
+        this._close_button = new St.Button({
             label: '×',
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.END,
         });
-        close_button.connect('clicked', () => {
+        this._close_button.connect('clicked', () => {
             if (this.get_current_window()) {
                 this.get_current_window().delete(0);
             }
         });
-        close_button.add_style_class_name('app-tab-close-button');
+        this._close_button.add_style_class_name('app-tab-close-button');
         this._controls.add_child(this._label)
-        this._controls.add_child(close_button)
+        this._controls.add_child(this._close_button)
 
         this.connect('clicked', () => {
             if (this.get_current_window()) {
                 this.get_current_window().activate(0);
             }
         });
+    }
+
+    destroy() {
+        this._current_window = null;
+        this._divide.destroy()
+        this._label.destroy();
+        this._close_button.destroy();
+        this._controls.destroy();
+        this._controls = null;
+        this._label = null;
+        this._divide = null;
+        super.destroy();
     }
 
     get_divide() {

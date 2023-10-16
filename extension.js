@@ -9,14 +9,17 @@ export default class AppTabsExtension extends Extension {
         this._logger = new Logger("AppTabsExtension")
         this._config = new Config();
         this._tabs = new TabPanel({config: this._config});
-        this._logger.info("enabling extension...");
+        this._logger.info("Enabling extension...");
         Main.panel.addToStatusArea(
             'AppTabs', this._tabs, this._config.index, this._config.side
         )
     }
 
     disable() {
-        this._logger.info("disabling extension...");
+        this._logger.info("Disabling extension...");
+        this._logger = null;
+        this._config = null;
         this._tabs.destroy();
+        this._tabs = null;
     }
 }

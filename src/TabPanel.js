@@ -89,7 +89,6 @@ export const TabPanel = GObject.registerClass({
     }
 
     destroy() {
-        super.destroy();
         Main.overview?.disconnectObject(this);
         global.display?.disconnectObject(this)
         global.window_manager?.disconnectObject(this)
@@ -98,11 +97,15 @@ export const TabPanel = GObject.registerClass({
         for (let tab of this._tabs_pool) {
             tab.destroy();
         }
-        this._tabs_pool = [];
+        this._tabs_pool = null;
         this._current_tabs_count = 0;
         this._target_app = null;
         this._update_windows_later_id = 0;
         this._logger = null
+        this._config = null;
+        this._controls.destroy();
+        this._controls = null;
+        super.destroy();
     }
 
     _init_tabs() {
