@@ -20,6 +20,10 @@ export const AppTab = GObject.registerClass({
         })
         this._controls.add_style_class_name("app-tab-controller");
         this.add_actor(this._controls)
+        this._icon = new St.Icon()
+        this._icon.set_icon_size(18)
+        this._icon.set_fallback_gicon(null)
+        this._icon.add_style_class_name("app-tab-icon");
         this._label = new St.Label({
             text: 'label',
             y_align: Clutter.ActorAlign.CENTER,
@@ -37,6 +41,7 @@ export const AppTab = GObject.registerClass({
             }
         });
         this._close_button.add_style_class_name('app-tab-close-button');
+        this._controls.add_child(this._icon);
         this._controls.add_child(this._label)
         this._controls.add_child(this._close_button)
 
@@ -49,14 +54,20 @@ export const AppTab = GObject.registerClass({
 
     destroy() {
         this._current_window = null;
+        this._icon.destroy();
         this._divide.destroy()
         this._label.destroy();
         this._close_button.destroy();
         this._controls.destroy();
+        this._icon = null;
         this._controls = null;
         this._label = null;
         this._divide = null;
         super.destroy();
+    }
+
+    set_icon(gio_icon) {
+        this._icon.set_gicon(gio_icon);
     }
 
     get_divide() {

@@ -244,6 +244,7 @@ export const TabPanel = GObject.registerClass({
 
     _reset_tab(tab) {
         tab.set_text(null);
+        tab.set_icon(null);
         tab.fade_out();
         let current_window = tab.get_current_window();
         current_window?.disconnectObject(this);
@@ -277,6 +278,7 @@ export const TabPanel = GObject.registerClass({
         windows.forEach((window) => {
             let tab = this._tabs_pool[this._current_tabs_count];
             tab.set_text(window.get_title() || this._target_app.get_name())
+            tab.set_icon(this._target_app.get_icon())
             tab.fade_in()
             window.connectObject('notify::title', () => {
                 tab.set_text(window.get_title() || this._app.get_name());
