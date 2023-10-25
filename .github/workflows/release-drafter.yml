@@ -1,0 +1,43 @@
+name: Release Drafter
+
+on:
+  push:
+    # branches to consider in the event; optional, defaults to all
+    branches:
+      - test*
+      - release*
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v3
+      - name: Get datetime and package_name
+        id: generate_datetime_and_package_name
+        run: |
+          datetime=$(date +'%Y%m%d%H%M%S');
+          echo "datetime=${datetime}" >> "$GITHUB_OUTPUT";
+          echo "package_name=${{ github.ref_name }}_${datetime}" >> "$GITHUB_OUTPUT";
+      - name: Package
+        run: |
+          bash ./package.sh ${{ steps.generate_datetime_and_package_name.outputs.package_name }};
+      - name: Release upload
+        id: release_upload
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: ${{ steps.generate_datetime_and_package_name.outputs.version }}.zip
+      - name: Release drafter
+        uses: release-drafter/release-drafter@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload: ${{ steps.release_upload.outputs.upload_url }}
+          publish: true
