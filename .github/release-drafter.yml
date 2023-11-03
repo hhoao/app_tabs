@@ -46,3 +46,6 @@ template: |
   ## Changes
 
   $CHANGES
+no-changes-template: |
+  ## No Change
+  Free time
