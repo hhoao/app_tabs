@@ -49,3 +49,5 @@ template: |
 no-changes-template: |
   ## No Change
   Free time
+references:
+  - release.+
