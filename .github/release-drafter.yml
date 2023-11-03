@@ -28,6 +28,7 @@ autolabeler:
   - label: 'feature'
     title:
       - '/\[feat.*\].+/'
+      - '/\[feat\]\shelloworld/'
   - label: 'other'
     branch:
       - '/release_.+/'
