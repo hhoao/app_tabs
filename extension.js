@@ -4,6 +4,10 @@ import Logger from './src/utils/Logger.js';
 import Config from './src/config/Config.js';
 import {TabPanel} from './src/TabPanel.js';
 
+export const get_extension_object = () => Extension.lookupByUUID('huanghaohhoa@163.com');
+export const get_settings = () => get_extension_object().getSettings(
+    "org.gnome.shell.extensions.app_tabs"
+);
 export default class AppTabsExtension extends Extension {
     enable() {
         this._logger = new Logger("AppTabsExtension")

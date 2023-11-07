@@ -1,15 +1,18 @@
 #!/bin/bash
 include_files=(
-src/*
+src
 stylesheet.css
 extension.js
 metadata.json
+prefs.js
 LICENSE
 )
 
 args=""
 for include_file in "${include_files[@]}"; do
-  args="${args} ${include_file}"
+  if [ -e "$include_file" ]; then
+    args="${args} ${include_file}"
+  fi
 done
 
 if [[ -n $1 ]]; then
