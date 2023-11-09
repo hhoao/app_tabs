@@ -7,6 +7,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
 import {AppTab} from './AppTab.js';
+import {get_settings} from '../extension.js';
 
 export const TabPanel = GObject.registerClass({
     Properties: {
@@ -44,6 +45,17 @@ export const TabPanel = GObject.registerClass({
         global.window_manager.connectObject('switch-workspace',
             this._sync.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
+        get_settings().connectObject(
+            "changed::ellipsize-mode",
+            this._on_ellipsize_mode_changed.bind(this),
+            this
+        );
+    }
+
+    _on_ellipsize_mode_changed(settings, mode) {
+        for (let tab of this._tabs_pool) {
+            tab.set_label_ellipsize_mode(get_settings().get_boolean(mode));
+        }
     }
 
     get_tab_style(is_active = false, is_hover = false) {
