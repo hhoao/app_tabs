@@ -6,6 +6,7 @@ extension.js
 metadata.json
 prefs.js
 LICENSE
+schemas
 )
 
 args=""
