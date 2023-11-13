@@ -10,21 +10,10 @@ import {AppTab} from './AppTab.js';
 import {get_settings} from '../extension.js';
 
 export const TabPanel = GObject.registerClass({
-    Properties: {
-        'config': GObject.ParamSpec.object(
-            'config',
-            'GObject Property',
-            'A property holding an object derived from GObject',
-            GObject.ParamFlags.READWRITE,
-            GObject.Object
-        ),
-    },
 }, class TabPanel extends PanelMenu.Button {
     _init(props) {
         super._init(1.0, null, true);
         this._config = props.config;
-        this._style_config = this._config.style_config;
-        this._default_initial_tabs_count = 4;
         this._tabs_pool = [];
         this._current_tabs_count = 0;
         this._target_app = null;
@@ -50,6 +39,17 @@ export const TabPanel = GObject.registerClass({
             this._on_ellipsize_mode_changed.bind(this),
             this
         );
+        get_settings().connectObject(
+            "changed::app-tab-config",
+            this._on_app_tab_config_changed.bind(this),
+            this
+        );
+    }
+
+    _on_app_tab_config_changed(settings, key) {
+        for (let tab of this._tabs_pool) {
+            tab.set_app_tab_config(JSON.parse(get_settings().get_string(key)));
+        }
     }
 
     _on_ellipsize_mode_changed(settings, mode) {
@@ -57,25 +57,6 @@ export const TabPanel = GObject.registerClass({
             tab.set_label_ellipsize_mode(get_settings().get_boolean(mode));
         }
     }
-
-    get_tab_style(is_active = false, is_hover = false) {
-        let style = "";
-        let default_tab_style = {...this._style_config.default_tab_style};
-        if (is_hover) {
-            if (this._style_config["hover-background"]) {
-                default_tab_style["hover-background"] = this._style_config["hover-background"];
-            }
-        } else if (is_active) {
-            if (this._style_config["active-background"]) {
-                default_tab_style["background"] = this._style_config["active-background"];
-            }
-        }
-        for (let name in default_tab_style) {
-            style += name + ":" + default_tab_style[name] + ";";
-        }
-        return style;
-    }
-
 
     on_focus_window_changed(param) {
         if (param.focus_window != null) {
@@ -85,18 +66,7 @@ export const TabPanel = GObject.registerClass({
 
     active_window_tab(window) {
         for (let i = 0; i < this._current_tabs_count; i++) {
-            if (this._tabs_pool[i].get_current_window() === window) {
-                this._tabs_pool[i].set_style(this.get_tab_style(true));
-                this._tabs_pool[i].hide_divide();
-            } else {
-                this._tabs_pool[i]
-                    .set_style(this.get_tab_style());
-                if (i > 0 && this._tabs_pool[i - 1].get_current_window() === window) {
-                    this._tabs_pool[i].hide_divide();
-                } else {
-                    this._tabs_pool[i].show_divide();
-                }
-            }
+            this._tabs_pool[i].on_active(window);
         }
     }
 
@@ -114,14 +84,13 @@ export const TabPanel = GObject.registerClass({
         this._target_app = null;
         this._update_windows_later_id = 0;
         this._logger = null
-        this._config = null;
         this._controls.destroy();
         this._controls = null;
         super.destroy();
     }
 
     _init_tabs() {
-        this._add_tabs(this._default_initial_tabs_count);
+        this._add_tabs(this._config.tab_panel_config.default_initial_tabs_count);
     }
 
     _reset_all_tabs() {
@@ -138,7 +107,7 @@ export const TabPanel = GObject.registerClass({
             divide.add_style_class_name('vertical-line');
             divide.hide();
 
-            let app_tab = new AppTab();
+            let app_tab = new AppTab({style_config: JSON.parse(get_settings().get_string("app-tab-config"))});
             app_tab.set_divide(divide)
             app_tab.hide();
             this._controls.add_child(divide);

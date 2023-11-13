@@ -4,5 +4,23 @@
     <key name="ellipsize-mode" type="b">
       <default>false</default>
     </key>
+    <key name="app-tab-config" type="s">
+      <default>
+        "{
+          \"icon-size\": 18,
+          \"default_style\": {
+            \"margin\": \"4px 0\",
+            \"border-radius\": \"8px\",
+            \"margin-left\": \"2px\"
+          },
+          \"active_style\": {
+            \"background\": \"#4b4b4b\"
+          },
+          \"hover_style\": {
+            \"background\": \"#4b4b4b\"
+          }
+        }"
+      </default>
+    </key>
   </schema>
 </schemalist>

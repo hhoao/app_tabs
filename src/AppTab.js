@@ -5,16 +5,16 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import {get_settings} from '../extension.js';
 
-export const AppTab = GObject.registerClass({
-}, class AppTab extends St.Button {
-    _init() {
+export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
+    _init(props) {
         super._init({
             x_expand: true,
             y_expand: true,
         });
+        this._style_config = props.style_config;
         this._current_window = null;
         this._divide = null;
-        this.add_style_class_name('app-tab')
+        this.add_style_class_name('app-tab');
 
         this._init_controls();
         this._init_icon();
@@ -27,6 +27,50 @@ export const AppTab = GObject.registerClass({
             }
         });
     }
+
+    set_app_tab_config(config) {
+        this._style_config = config;
+        if (Number.parseInt(this._style_config['icon-size']) !== this._icon.get_icon_size()) {
+            this._icon.set_icon_size(Number.parseInt(this._style_config['icon-size']));
+        }
+    }
+
+    on_active(window) {
+        if (this.get_current_window() === window) {
+            this.set_style(this.get_tab_style(true));
+            this.hide_divide();
+        } else {
+            this.set_style(this.get_tab_style());
+            if (this.get_current_window() === window) {
+                this.hide_divide();
+            } else {
+                this.show_divide();
+            }
+        }
+    }
+
+    get_tab_style(is_active = false, is_hover = false) {
+        let style = '';
+        if (this._style_config.default_style) {
+            let tab_style = {...this._style_config.default_style};
+            if (is_hover && this._style_config.hover_style) {
+                let hover_tab_style = {...this._style_config.hover_style};
+                for (let name in hover_tab_style) {
+                    tab_style[name] = hover_tab_style[name];
+                }
+            } else if (is_active && this._style_config.active_style) {
+                let active_tab_style = {...this._style_config.active_style};
+                for (let name in active_tab_style) {
+                    tab_style[name] = active_tab_style[name];
+                }
+            }
+            for (let name in tab_style) {
+                style += name + ':' + tab_style[name] + ';';
+            }
+        }
+        return style;
+    }
+
     _init_close_button() {
         this._close_button = new St.Button({
             label: '×',
@@ -39,31 +83,34 @@ export const AppTab = GObject.registerClass({
             }
         });
         this._close_button.add_style_class_name('app-tab-close-button');
-        this._controls.add_child(this._close_button)
+        this._controls.add_child(this._close_button);
     }
+
     _init_controls() {
         this._controls = new St.BoxLayout({
             x_expand: true,
             y_expand: false,
-        })
-        this._controls.add_style_class_name("app-tab-controller");
-        this.add_actor(this._controls)
+        });
+        this._controls.add_style_class_name('app-tab-controller');
+        this.add_actor(this._controls);
     }
 
     _init_icon() {
-        this._icon = new St.Icon()
-        this._icon.set_icon_size(18)
-        this._icon.set_fallback_gicon(null)
-        this._icon.add_style_class_name("app-tab-icon");
+        this._icon = new St.Icon();
+        let icon_size = this._style_config['icon-size'];
+        this._icon.set_icon_size(icon_size ? Number.parseInt(this._style_config['icon-size']) : 18);
+        this._icon.set_fallback_gicon(null);
+        this._icon.add_style_class_name('app-tab-icon');
         this._controls.add_child(this._icon);
     }
+
     _init_label() {
         this._label = new St.Label({
             text: 'label',
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.FILL,
         });
-        let enableEllipsizeMode = get_settings().get_boolean("ellipsize-mode");
+        let enableEllipsizeMode = get_settings().get_boolean('ellipsize-mode');
         let ellipsizeMode = Pango.EllipsizeMode.NONE;
         if (enableEllipsizeMode) {
             ellipsizeMode = Pango.EllipsizeMode.END;
@@ -75,7 +122,7 @@ export const AppTab = GObject.registerClass({
         this._label.clutter_text.set_max_length(10);
         this._label.add_style_class_name('app-tab-label');
 
-        this._controls.add_child(this._label)
+        this._controls.add_child(this._label);
     }
 
     set_label_ellipsize_mode(value) {
@@ -89,7 +136,7 @@ export const AppTab = GObject.registerClass({
     destroy() {
         this._current_window = null;
         this._icon.destroy();
-        this._divide.destroy()
+        this._divide.destroy();
         this._label.destroy();
         this._close_button.destroy();
         this._controls.destroy();
@@ -115,6 +162,7 @@ export const AppTab = GObject.registerClass({
     hide_divide() {
         this._divide.hide();
     }
+
     show_divide() {
         this._divide.show();
     }
@@ -168,4 +216,4 @@ export const AppTab = GObject.registerClass({
             duration: Overview.ANIMATION_TIME,
         });
     }
-})
+});
