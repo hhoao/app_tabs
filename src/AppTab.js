@@ -3,14 +3,16 @@ import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
 import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
-import {get_settings} from '../extension.js';
 
-export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
+export const AppTab = GObject.registerClass({
+}, class AppTab extends St.Button {
     _init(props) {
         super._init({
             x_expand: true,
             y_expand: true,
         });
+        this._settings = props.settings;
+        this._is_dark_mode = props.is_dark_mode;
         this._style_config = props.style_config;
         this._current_window = null;
         this._divide = null;
@@ -37,10 +39,10 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
 
     on_active(window) {
         if (this.get_current_window() === window) {
-            this.set_style(this.get_tab_style(true));
+            this.set_style(this._get_tab_style(true));
             this.hide_divide();
         } else {
-            this.set_style(this.get_tab_style());
+            this.set_style(this._get_tab_style());
             if (this.get_current_window() === window) {
                 this.hide_divide();
             } else {
@@ -49,26 +51,44 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         }
     }
 
-    get_tab_style(is_active = false, is_hover = false) {
-        let style = '';
-        if (this._style_config.default_style) {
-            let tab_style = {...this._style_config.default_style};
-            if (is_hover && this._style_config.hover_style) {
-                let hover_tab_style = {...this._style_config.hover_style};
-                for (let name in hover_tab_style) {
-                    tab_style[name] = hover_tab_style[name];
-                }
-            } else if (is_active && this._style_config.active_style) {
-                let active_tab_style = {...this._style_config.active_style};
-                for (let name in active_tab_style) {
-                    tab_style[name] = active_tab_style[name];
-                }
+    _extract_config_style(style_config, is_active = false, is_hover = false) {
+        let tab_style = {...style_config.default_style};
+        if (is_hover && style_config.hover_style) {
+            let hover_tab_style = {...style_config.hover_style};
+            for (let name in hover_tab_style) {
+                tab_style[name] = hover_tab_style[name];
             }
-            for (let name in tab_style) {
-                style += name + ':' + tab_style[name] + ';';
+        } else if (is_active && style_config.active_style) {
+            let active_tab_style = {...this._style_config.active_style};
+            for (let name in active_tab_style) {
+                tab_style[name] = active_tab_style[name];
             }
         }
+        return tab_style;
+    }
+
+    _get_tab_style(is_active = false, is_hover = false) {
+        let style = '';
+        let tab_style = {}, mode_tab_style= {};
+        if (this._style_config.default) {
+            tab_style = this._extract_config_style(this._style_config.default);
+        }
+        if (!this._is_dark_mode && this._style_config.light_mode) {
+            mode_tab_style = this._extract_config_style(this._style_config.light_mode, is_active, is_hover);
+        } else if (this._is_dark_mode && this._style_config.dark_mode){
+            mode_tab_style = this._extract_config_style(this._style_config.dark_mode, is_active, is_hover);
+        }
+        for (let name in mode_tab_style) {
+            tab_style[name] = mode_tab_style[name];
+        }
+        for (let name in tab_style) {
+            style += name + ':' + tab_style[name] + ';';
+        }
         return style;
+    }
+
+    set_theme(theme) {
+        this._is_dark_mode = theme.includes('dark');
     }
 
     _init_close_button() {
@@ -110,12 +130,12 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.FILL,
         });
-        let enableEllipsizeMode = get_settings().get_boolean('ellipsize-mode');
-        let ellipsizeMode = Pango.EllipsizeMode.NONE;
-        if (enableEllipsizeMode) {
-            ellipsizeMode = Pango.EllipsizeMode.END;
+        let enable_ellipsize_mode = this._settings.get_boolean("ellipsize-mode");
+        let ellipsize_mode = Pango.EllipsizeMode.NONE;
+        if (enable_ellipsize_mode) {
+            ellipsize_mode = Pango.EllipsizeMode.END;
         }
-        this._label.clutter_text.set_ellipsize(ellipsizeMode);
+        this._label.clutter_text.set_ellipsize(ellipsize_mode);
         this._label.clutter_text.set_line_wrap(false);
         this._label.clutter_text.set_single_line_mode(true);
         this._label.clutter_text.set_line_wrap_mode(Pango.WrapMode.CHAR);
@@ -125,22 +145,24 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._controls.add_child(this._label);
     }
 
-    set_label_ellipsize_mode(value) {
-        let ellipsizeMode = Pango.EllipsizeMode.NONE;
+    switch_label_ellipsize_mode(value) {
+        let ellipsize_mode = Pango.EllipsizeMode.NONE;
         if (value) {
-            ellipsizeMode = Pango.EllipsizeMode.END;
+            ellipsize_mode = Pango.EllipsizeMode.END;
         }
-        this._label.clutter_text.set_ellipsize(ellipsizeMode);
+        this._label.clutter_text.set_ellipsize(ellipsize_mode);
     }
 
     destroy() {
-        this._current_window = null;
         this._icon.destroy();
         this._divide.destroy();
         this._label.destroy();
         this._close_button.destroy();
         this._controls.destroy();
+        this._settings = null;
+        this._current_window = null;
         this._icon = null;
+        this._style_config = null;
         this._controls = null;
         this._label = null;
         this._divide = null;

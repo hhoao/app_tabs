@@ -4,9 +4,8 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 export default class ApplicationTabPreferences extends ExtensionPreferences {
-    get_ellipsize_mode_group = () => {
+    get_ellipsize_mode_group = (settings) => {
         let key_name = 'ellipsize-mode';
-        const settings = this.getSettings();
         const ellipsize_mode_switch = new Gtk.Switch({
             active: false,
             valign: Gtk.Align.CENTER,
@@ -25,9 +24,26 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         ellipsis_mode_row.activatable_widget = ellipsize_mode_switch;
         return group;
     };
-    get_app_tab_config_group = (window) => {
+    get_app_tab_config_group = (settings, window) => {
         const key_name = 'app-tab-config';
-        const settings = this.getSettings();
+
+        const app_tab_config_group = new Adw.PreferencesGroup({
+            title: 'Application Tab Configuration',
+            description: 'Configure the appearance of the extension',
+        });
+
+        let text_view_wrapper = this.get_text_view_wrapper(settings, key_name);
+
+        app_tab_config_group.add(text_view_wrapper.scrolled_window);
+        app_tab_config_group.add(text_view_wrapper.button_box);
+
+        return app_tab_config_group;
+    };
+    get_text_view_wrapper(settings, key_name) {
+        const scrolled_window = new Gtk.ScrolledWindow();
+        scrolled_window.set_max_content_height(300);
+        scrolled_window.set_min_content_height(100);
+        scrolled_window.set_vadjustment(Gtk.Adjustment.new(0, 0, 1000, 10, 0, 0));
         const app_tab_config_text_view = new Gtk.TextView({
             valign: Gtk.Align.CENTER,
         });
@@ -41,11 +57,12 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
                 text_buffer.set_text(text, text.length);
             },
         );
-
-        const scrolled_window = new Gtk.ScrolledWindow();
-        scrolled_window.set_max_content_height(300);
-        scrolled_window.set_vadjustment(Gtk.Adjustment.new(0, 0, 1000, 10, 0, 0));
+        const button_box = this.get_text_button_box(settings, text_buffer, key_name);
         scrolled_window.set_child(app_tab_config_text_view);
+        return {scrolled_window, button_box};
+    }
+
+    get_text_button_box(settings, text_buffer, key_name) {
         const button_box = new Gtk.Box({
             orientation: Gtk.Orientation.HORIZONTAL,
             spacing: 10,
@@ -94,22 +111,17 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         button_box.append(format_button);
         button_box.append(reset_button);
         button_box.append(reset_default_button);
-        const app_tab_config_group = new Adw.PreferencesGroup({
-            title: 'Application Tab Configuration',
-            description: 'Configure the appearance of the extension',
-        });
-        app_tab_config_group.add(scrolled_window);
-        app_tab_config_group.add(button_box);
-        return app_tab_config_group;
-    };
+        return button_box;
+    }
 
     fillPreferencesWindow(window) {
+        const settings = this.getSettings();
         const page = new Adw.PreferencesPage({
             title: 'General',
             icon_name: 'dialog-information-symbolic',
         });
-        const ellipsize_mode_group = this.get_ellipsize_mode_group();
-        const app_tab_config_group = this.get_app_tab_config_group(window);
+        const ellipsize_mode_group = this.get_ellipsize_mode_group(settings);
+        const app_tab_config_group = this.get_app_tab_config_group(settings, window);
         page.add(ellipsize_mode_group);
         page.add(app_tab_config_group);
         window.add(page);

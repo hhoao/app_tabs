@@ -13,16 +13,30 @@ You can configure app tab style like this on preferences, and the style use the 
 ```json5
 {
   "icon-size": 18,
-  "default_style": {
-    "margin": "2px 0",
-    "border-radius": "8px",
-    "margin-left": "2px"
+  "default": {
+    "default_style": {
+      "margin": "4px 0",
+      "border-radius": "8px",
+      "margin-left": "2px",
+      "color": "white"
+    },
+    "active_style": {
+      "background": "#4b4b4b"
+    },
+    "hover_style": {
+      "background": "#4b4b4b"
+    }
   },
-  "active_style": {
-    "background": "#4b4b4b"
+  "light_mode": {
+    "default_style": {},
+    "active_style": {},
+    "hover_style": {}
   },
-  "hover_style": {
-    "background": "#4b4b4b"
+  "dark_mode": {
+    "default_style": {
+    },
+    "active_style": {},
+    "hover_style": {}
   }
 }
 ```
@@ -34,7 +48,8 @@ dbus-run-session -- gnome-shell --nested --wayland
 ```
 Preferences:
 ```bash
-gnome-extensions prefs huanghaohhoa-dev@163.com
+journalctl -f -o cat /usr/bin/gjs
+gnome-extensions prefs huanghaohhoa@163.com
 ```
 
 ## Feature
