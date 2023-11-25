@@ -3,23 +3,24 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import Meta from 'gi://Meta';
+import Gio from 'gi://Gio';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
 import {AppTab} from './AppTab.js';
-import {get_settings} from '../extension.js';
 
 export const TabPanel = GObject.registerClass({
 }, class TabPanel extends PanelMenu.Button {
     _init(props) {
         super._init(1.0, null, true);
+        this._settings = props.settings;
+        this._desktop_settings = new Gio.Settings({ schema: 'org.gnome.desktop.interface' });
         this._config = props.config;
         this._tabs_pool = [];
         this._current_tabs_count = 0;
         this._target_app = null;
         this._update_windows_later_id = 0;
         this._logger = new Logger("TabPanel")
-
         this.add_style_class_name('app-tabs')
         this.remove_style_class_name('panel-button')
         this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
@@ -34,27 +35,43 @@ export const TabPanel = GObject.registerClass({
         global.window_manager.connectObject('switch-workspace',
             this._sync.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
-        get_settings().connectObject(
+        this._listen_settings();
+    }
+
+    _listen_settings() {
+        this._settings.connectObject(
             "changed::ellipsize-mode",
             this._on_ellipsize_mode_changed.bind(this),
             this
         );
-        get_settings().connectObject(
+        this._settings.connectObject(
             "changed::app-tab-config",
             this._on_app_tab_config_changed.bind(this),
             this
         );
+        this._desktop_settings.connectObject(
+            "changed::gtk-theme",
+            this._on_theme_changed.bind(this),
+            this
+        );
+    }
+
+    _on_theme_changed(settings, key) {
+        for (let tab of this._tabs_pool) {
+            tab.set_theme(settings.get_string(key));
+        }
+
     }
 
     _on_app_tab_config_changed(settings, key) {
         for (let tab of this._tabs_pool) {
-            tab.set_app_tab_config(JSON.parse(get_settings().get_string(key)));
+            tab.set_app_tab_config(JSON.parse(this._settings.get_string(key)));
         }
     }
 
     _on_ellipsize_mode_changed(settings, mode) {
         for (let tab of this._tabs_pool) {
-            tab.set_label_ellipsize_mode(get_settings().get_boolean(mode));
+            tab.switch_label_ellipsize_mode(settings.get_boolean(mode));
         }
     }
 
@@ -71,6 +88,8 @@ export const TabPanel = GObject.registerClass({
     }
 
     destroy() {
+        this._desktop_settings?.disconnectObject(this);
+        this._settings?.disconnectObject(this);
         Main.overview?.disconnectObject(this);
         global.display?.disconnectObject(this)
         global.window_manager?.disconnectObject(this)
@@ -79,6 +98,8 @@ export const TabPanel = GObject.registerClass({
         for (let tab of this._tabs_pool) {
             tab.destroy();
         }
+        this._desktop_settings = null;
+        this._settings = null;
         this._tabs_pool = null;
         this._current_tabs_count = 0;
         this._target_app = null;
@@ -107,7 +128,11 @@ export const TabPanel = GObject.registerClass({
             divide.add_style_class_name('vertical-line');
             divide.hide();
 
-            let app_tab = new AppTab({style_config: JSON.parse(get_settings().get_string("app-tab-config"))});
+            let app_tab = new AppTab({
+                style_config: JSON.parse(this._settings.get_string("app-tab-config")),
+                is_dark_mode: this._desktop_settings.get_string("gtk-theme"),
+                settings: this._settings,
+            });
             app_tab.set_divide(divide)
             app_tab.hide();
             this._controls.add_child(divide);

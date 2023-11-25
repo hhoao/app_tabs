@@ -1,26 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.app_tabs" path="/org/gnome/shell/extensions/app_tabs/">
-    <key name="ellipsize-mode" type="b">
-      <default>false</default>
-    </key>
-    <key name="app-tab-config" type="s">
-      <default>
-        "{
-          \"icon-size\": 18,
-          \"default_style\": {
+    <schema id="org.gnome.shell.extensions.app_tabs" path="/org/gnome/shell/extensions/app_tabs/">
+        <key name="ellipsize-mode" type="b">
+            <default>false</default>
+        </key>
+        <key name="app-tab-config" type="s">
+            <default>
+"{
+    \"icon-size\": 18,
+    \"default\": {
+        \"default_style\": {
             \"margin\": \"4px 0\",
             \"border-radius\": \"8px\",
-            \"margin-left\": \"2px\"
-          },
-          \"active_style\": {
+            \"margin-left\": \"2px\",
+            \"color\": \"white\"
+        },
+        \"active_style\": {
             \"background\": \"#4b4b4b\"
-          },
-          \"hover_style\": {
+        },
+        \"hover_style\": {
             \"background\": \"#4b4b4b\"
-          }
-        }"
-      </default>
-    </key>
-  </schema>
+        }
+    },
+    \"light_mode\": {
+        \"default_style\": {
+        },
+        \"active_style\": {
+        },
+        \"hover_style\": {
+        }
+    },
+    \"dark_mode\": {
+        \"default_style\": {
+        },
+        \"active_style\": {
+        },
+        \"hover_style\": {
+        }
+    }
+}"
+            </default>
+        </key>
+    </schema>
 </schemalist>
