@@ -59,7 +59,7 @@ export const AppTab = GObject.registerClass({
                 tab_style[name] = hover_tab_style[name];
             }
         } else if (is_active && style_config.active_style) {
-            let active_tab_style = {...this._style_config.active_style};
+            let active_tab_style = {...style_config.active_style};
             for (let name in active_tab_style) {
                 tab_style[name] = active_tab_style[name];
             }
@@ -71,7 +71,7 @@ export const AppTab = GObject.registerClass({
         let style = '';
         let tab_style = {}, mode_tab_style= {};
         if (this._style_config.default) {
-            tab_style = this._extract_config_style(this._style_config.default);
+            tab_style = this._extract_config_style(this._style_config.default, is_active, is_hover);
         }
         if (!this._is_dark_mode && this._style_config.light_mode) {
             mode_tab_style = this._extract_config_style(this._style_config.light_mode, is_active, is_hover);
