@@ -3,6 +3,7 @@ import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
 import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
+import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
 
 export const AppTab = GObject.registerClass({
 }, class AppTab extends St.Button {
@@ -43,11 +44,7 @@ export const AppTab = GObject.registerClass({
             this.hide_divide();
         } else {
             this.set_style(this._get_tab_style());
-            if (this.get_current_window() === window) {
-                this.hide_divide();
-            } else {
-                this.show_divide();
-            }
+            this.show_divide();
         }
     }
 
@@ -98,8 +95,9 @@ export const AppTab = GObject.registerClass({
             x_align: Clutter.ActorAlign.END,
         });
         this._close_button.connect('clicked', () => {
-            if (this.get_current_window()) {
-                this.get_current_window().delete(0);
+            if (this.get_current_window() && this.get_current_window().can_close()) {
+                this.get_current_window()?.disconnectObject(this);
+                this.get_current_window().delete(global.get_current_time());
             }
         });
         this._close_button.add_style_class_name('app-tab-close-button');
@@ -130,7 +128,7 @@ export const AppTab = GObject.registerClass({
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.FILL,
         });
-        let enable_ellipsize_mode = this._settings.get_boolean("ellipsize-mode");
+        let enable_ellipsize_mode = this._settings.get_boolean(SchemaKeyConstants.ELLIPSIZE_MODE);
         let ellipsize_mode = Pango.EllipsizeMode.NONE;
         if (enable_ellipsize_mode) {
             ellipsize_mode = Pango.EllipsizeMode.END;

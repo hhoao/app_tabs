@@ -4,6 +4,9 @@
         <key name="ellipsize-mode" type="b">
             <default>false</default>
         </key>
+        <key name="panel-max-width" type="i">
+            <default>400</default>
+        </key>
         <key name="app-tab-config" type="s">
             <default>
 "{

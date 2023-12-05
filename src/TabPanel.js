@@ -8,6 +8,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
 import {AppTab} from './AppTab.js';
+import Clutter from 'gi://Clutter';
+import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
 
 export const TabPanel = GObject.registerClass({
 }, class TabPanel extends PanelMenu.Button {
@@ -17,15 +19,18 @@ export const TabPanel = GObject.registerClass({
         this._desktop_settings = new Gio.Settings({ schema: 'org.gnome.desktop.interface' });
         this._config = props.config;
         this._tabs_pool = [];
-        this._current_tabs_count = 0;
         this._target_app = null;
         this._update_windows_later_id = 0;
+        this._current_tabs_count = 0;
         this._logger = new Logger("TabPanel")
         this.add_style_class_name('app-tabs')
         this.remove_style_class_name('panel-button')
+        this._scroll_view = this.get_horizontal_scroll_view();
+        this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
-        this.add_child(this._controls)
-        this._init_tabs();
+        this._scroll_view.add_actor(this._controls);
+        this.add_child(this._scroll_view)
+        this._init_pool_tabs();
 
         Main.overview.connectObject(
             'hiding', this._sync.bind(this),
@@ -37,30 +42,72 @@ export const TabPanel = GObject.registerClass({
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this)
         this._listen_settings();
     }
+    get_changed_key(key) {
+        return "changed::" + key;
+    }
 
     _listen_settings() {
         this._settings.connectObject(
-            "changed::ellipsize-mode",
+            this.get_changed_key(SchemaKeyConstants.PANEL_MAX_WIDTH),
+            this._on_panel_max_width_changed.bind(this),
+            this
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.ELLIPSIZE_MODE),
             this._on_ellipsize_mode_changed.bind(this),
             this
         );
         this._settings.connectObject(
-            "changed::app-tab-config",
+            this.get_changed_key(SchemaKeyConstants.APP_TAB_CONFIG),
             this._on_app_tab_config_changed.bind(this),
             this
         );
         this._desktop_settings.connectObject(
-            "changed::gtk-theme",
+            this.get_changed_key(SchemaKeyConstants.GTK_THEME),
             this._on_theme_changed.bind(this),
             this
         );
+    }
+
+    _on_panel_max_width_changed(settings, key) {
+        this.set_panel_max_width(settings.get_int(key));
+    }
+
+    set_panel_max_width(max_width) {
+        if (max_width !== -1) {
+            let max_width_style = "max-width: " + max_width + "px";
+            this._scroll_view.set_style(max_width_style);
+        } else {
+            this._scroll_view.set_style("");
+        }
+    }
+
+    get_horizontal_scroll_view() {
+        let scroll_view = new St.ScrollView({
+            style_class: 'app-tabs-scroll-view',
+            overlay_scrollbars: true,
+            hscrollbar_policy: St.PolicyType.EXTERNAL,
+            vscrollbar_policy: St.PolicyType.NEVER,
+            enable_mouse_scrolling: false
+        });
+        scroll_view.connect('scroll-event', (actor, event) => {
+            let scroll_view_adjustment = scroll_view.hscroll.adjustment
+            let increment_value =  0;
+            if (event.get_scroll_direction() === Clutter.ScrollDirection.DOWN) {
+                increment_value = scroll_view_adjustment.step_increment
+            } else if (event.get_scroll_direction() === Clutter.ScrollDirection.UP) {
+                increment_value = -scroll_view_adjustment.step_increment;
+            }
+
+            scroll_view_adjustment.set_value(scroll_view_adjustment.get_value() + increment_value);
+        });
+        return scroll_view;
     }
 
     _on_theme_changed(settings, key) {
         for (let tab of this._tabs_pool) {
             tab.set_theme(settings.get_string(key));
         }
-
     }
 
     _on_app_tab_config_changed(settings, key) {
@@ -88,6 +135,7 @@ export const TabPanel = GObject.registerClass({
     }
 
     destroy() {
+        this._scroll_view?.disconnectObject(this);
         this._desktop_settings?.disconnectObject(this);
         this._settings?.disconnectObject(this);
         Main.overview?.disconnectObject(this);
@@ -98,39 +146,41 @@ export const TabPanel = GObject.registerClass({
         for (let tab of this._tabs_pool) {
             tab.destroy();
         }
+        this._controls.destroy();
+        this._scroll_view.destroy();
+
+        this._scroll_view = null;
         this._desktop_settings = null;
         this._settings = null;
         this._tabs_pool = null;
-        this._current_tabs_count = 0;
+        this._current_tabs_count = null;
         this._target_app = null;
-        this._update_windows_later_id = 0;
+        this._update_windows_later_id = null;
         this._logger = null
-        this._controls.destroy();
         this._controls = null;
         super.destroy();
-    }
-
-    _init_tabs() {
-        this._add_tabs(this._config.tab_panel_config.default_initial_tabs_count);
     }
 
     _reset_all_tabs() {
         let tab_count = this._current_tabs_count;
         for (let i = 0; i < tab_count; i++) {
             let tab = this._tabs_pool[i];
-            this._reset_tab(tab, false);
+            this._reset_tab(tab);
         }
     }
+    _init_pool_tabs() {
+        this._add_pool_tabs(this._config.tab_panel_config.default_initial_tabs_count);
+    }
 
-    _add_tabs(count) {
+    _add_pool_tabs(count) {
         for (let i = 0; i < count; i++) {
             let divide = new St.Label();
             divide.add_style_class_name('vertical-line');
             divide.hide();
 
             let app_tab = new AppTab({
-                style_config: JSON.parse(this._settings.get_string("app-tab-config")),
-                is_dark_mode: this._desktop_settings.get_string("gtk-theme"),
+                style_config: JSON.parse(this._settings.get_string(SchemaKeyConstants.APP_TAB_CONFIG)),
+                is_dark_mode: this._desktop_settings.get_string(SchemaKeyConstants.GTK_THEME),
                 settings: this._settings,
             });
             app_tab.set_divide(divide)
@@ -208,7 +258,7 @@ export const TabPanel = GObject.registerClass({
         }
         if (info[2].length > 0) {
             this._remove_tab(info[2]);
-            this._sort_tab();
+            // this._sort_tab();
         }
         if (info[2].length > 0 || info[0].length > 0) {
             this.on_focus_window_changed(global.display)
@@ -252,26 +302,12 @@ export const TabPanel = GObject.registerClass({
         tab.set_text(null);
         tab.set_icon(null);
         tab.fade_out();
-        let current_window = tab.get_current_window();
-        current_window?.disconnectObject(this);
         tab.set_current_window(null);
         this._current_tabs_count--;
-    }
-
-    _sort_tab() {
-        for (let i = 0, j = this._current_tabs_count; i < j; i++, j--) {
-            if (this._tabs_pool[i] && !this._tabs_pool[i].is_active()) {
-                while (!this._tabs_pool[j].is_active() && i < j) {
-                    j--;
-                }
-                if (i >= j) {
-                    break;
-                }
-                let tmp = this._tabs_pool[i];
-                this._tabs_pool[i] = this._tabs_pool[j];
-                this._tabs_pool[j] = tmp;
-            }
-        }
+        this._controls.set_child_above_sibling(tab, null);
+        this._controls.set_child_above_sibling(tab.get_divide(), null);
+        this._tabs_pool.splice(this._tabs_pool.indexOf(tab), 1);
+        this._tabs_pool.push(tab)
     }
 
     /**
@@ -279,7 +315,7 @@ export const TabPanel = GObject.registerClass({
      */
     _add_tabs_by_windows(windows) {
         if (this._current_tabs_count + windows.length > this._tabs_pool.length) {
-            this._add_tabs(this._current_tabs_count + windows.length - this._tabs_pool.length);
+            this._add_pool_tabs(this._current_tabs_count + windows.length - this._tabs_pool.length);
         }
         windows.forEach((window) => {
             let tab = this._tabs_pool[this._current_tabs_count];
@@ -288,7 +324,7 @@ export const TabPanel = GObject.registerClass({
             tab.fade_in()
             window.connectObject('notify::title', () => {
                 tab.set_text(window.get_title() || this._app.get_name());
-            }, this)
+            }, tab)
             tab.set_current_window(window);
             this._current_tabs_count++;
         });
