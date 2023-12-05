@@ -1,7 +1,8 @@
 .app-tabs {
     width: 100px;
 }
-
+.app-tabs-scroll-view {
+}
 .app-tabs-box {
     margin: 2px;
 }
@@ -17,8 +18,8 @@
 
 .vertical-line {
     width: 2px;
-    margin-top: 9px;
-    margin-bottom: 9px;
+    margin-top: 7px;
+    margin-bottom: 7px;
     background-color: #4b4b4b;
 }
 
@@ -36,10 +37,11 @@
     padding-left: 6px;
     padding-right: 6px;
     border-radius: 16px;
+    width: 10px;
 }
 
 .app-tab-close-button:hover {
-    background-color: #3b3b3b;
+    background-color: #2d2d2d;
     transition-duration: 0.3s;
     transition-property: background-color;
 }
