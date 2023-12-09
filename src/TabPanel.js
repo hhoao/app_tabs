@@ -302,6 +302,8 @@ export const TabPanel = GObject.registerClass({
         tab.set_text(null);
         tab.set_icon(null);
         tab.fade_out();
+        let currentWindow = tab.get_current_window();
+        currentWindow?.disconnectObject(tab);
         tab.set_current_window(null);
         this._current_tabs_count--;
         this._controls.set_child_above_sibling(tab, null);
