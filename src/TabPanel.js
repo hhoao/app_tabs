@@ -163,10 +163,13 @@ export const TabPanel = GObject.registerClass({
 
     _reset_all_tabs() {
         let tab_count = this._current_tabs_count;
+        let tmp_tab_list = [];
         for (let i = 0; i < tab_count; i++) {
-            let tab = this._tabs_pool[i];
-            this._reset_tab(tab);
+            tmp_tab_list.push(this._tabs_pool[i]);
         }
+        tmp_tab_list.forEach((tab) => {
+           this._reset_tab(tab);
+        })
     }
     _init_pool_tabs() {
         this._add_pool_tabs(this._config.tab_panel_config.default_initial_tabs_count);
@@ -214,17 +217,16 @@ export const TabPanel = GObject.registerClass({
 
     _sync(param) {
         let targetApp = this._find_target_app();
-        if (targetApp !== null && (this._target_app !== targetApp || Main.overview === param)) {
+        if ((targetApp !== null && this._target_app !== targetApp) || Main.overview === param) {
             this._reset_all_tabs();
             this._target_app?.disconnectObject(this);
 
             this._target_app = targetApp;
 
             this._target_app?.connectObject('windows-changed',
-                () => this._queue_update_windows_section(), this);
+                this._queue_update_windows_section.bind(this), this);
 
-            this._target_app?.connectObject('notify::busy', this._sync.bind(this), this);
-            this._update_windows_section();
+            this._update_windows_section(this._target_app);
         }
     }
 
@@ -235,30 +237,38 @@ export const TabPanel = GObject.registerClass({
         const laters = global.compositor.get_laters();
         this._update_windows_later_id = laters.add(
             Meta.LaterType.BEFORE_REDRAW, () => {
-                this._update_windows_section();
+                this._latter_update_windows_session(this._target_app);
                 return GLib.SOURCE_REMOVE;
             });
     }
 
-    _update_windows_section() {
+    _latter_update_windows_session(app) {
+        if (this._update_windows_later_id) {
+            const laters = global.compositor.get_laters();
+            laters.remove(this._update_windows_later_id);
+        }
+        this._update_windows_later_id = 0;
+        this._update_windows_section(app)
+    }
+
+    _update_windows_section(app) {
         if (this._update_windows_later_id) {
             const laters = global.compositor.get_laters();
             laters.remove(this._update_windows_later_id);
         }
         this._update_windows_later_id = 0;
 
-        if (!this._target_app) {
+        if (!app) {
             return;
         }
 
-        const windows = this._target_app.get_windows().filter(w => !w.skip_taskbar);
+        const windows = app.get_windows().filter(w => !w.skip_taskbar);
         let info = this._get_windows_info(windows);
         if (info[0].length > 0) {
-            this._add_tabs_by_windows(info[0])
+            this._add_tabs_by_windows(app, info[0])
         }
         if (info[2].length > 0) {
             this._remove_tab(info[2]);
-            // this._sort_tab();
         }
         if (info[2].length > 0 || info[0].length > 0) {
             this.on_focus_window_changed(global.display)
@@ -315,14 +325,14 @@ export const TabPanel = GObject.registerClass({
     /**
      * @param windows Needs to be added windows
      */
-    _add_tabs_by_windows(windows) {
+    _add_tabs_by_windows(app, windows) {
         if (this._current_tabs_count + windows.length > this._tabs_pool.length) {
             this._add_pool_tabs(this._current_tabs_count + windows.length - this._tabs_pool.length);
         }
         windows.forEach((window) => {
             let tab = this._tabs_pool[this._current_tabs_count];
-            tab.set_text(window.get_title() || this._target_app.get_name())
-            tab.set_icon(this._target_app.get_icon())
+            tab.set_text(window.get_title() || app.get_name())
+            tab.set_icon(app.get_icon())
             tab.fade_in()
             window.connectObject('notify::title', () => {
                 tab.set_text(window.get_title() || this._app.get_name());
