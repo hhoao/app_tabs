@@ -110,7 +110,7 @@ export const AppTab = GObject.registerClass({
             y_expand: false,
         });
         this._controls.add_style_class_name('app-tab-controller');
-        this.add_actor(this._controls);
+        this.add_child(this._controls);
     }
 
     _init_icon() {
