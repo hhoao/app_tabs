@@ -28,7 +28,7 @@ export const TabPanel = GObject.registerClass({
         this._scroll_view = this.get_horizontal_scroll_view();
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this._controls = new St.BoxLayout({style_class: 'app-tabs-box'})
-        this._scroll_view.add_actor(this._controls);
+        this._scroll_view.add_child(this._controls);
         this.add_child(this._scroll_view)
         this._init_pool_tabs();
 
