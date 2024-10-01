@@ -3,12 +3,8 @@
 }
 .app-tabs-scroll-view {
 }
-.app-tabs-box {
-    margin: 2px;
-}
 
 .app-tab {
-    margin: 4px 0;
     padding-left: 10px;
     padding-right: 4px;
 }
