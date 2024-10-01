@@ -53,6 +53,8 @@ gnome-extensions prefs huanghaohhoa@163.com
 ```
 
 ## Feature
-1. You can see the application window intuitively
-2. Click tab to jump to the corresponding window immediately
-3. Click the Close button to close the window
+1. You can see the application window intuitively.
+2. Click tab to jump to the corresponding window immediately or hide window for active tab.
+3. Click the Close button to close the window.
+
+If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.

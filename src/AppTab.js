@@ -5,8 +5,7 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
 
-export const AppTab = GObject.registerClass({
-}, class AppTab extends St.Button {
+export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
     _init(props) {
         super._init({
             x_expand: true,
@@ -15,6 +14,7 @@ export const AppTab = GObject.registerClass({
         this._settings = props.settings;
         this._is_dark_mode = props.is_dark_mode;
         this._style_config = props.style_config;
+        // Meta.Window
         this._current_window = null;
         this._divide = null;
         this.add_style_class_name('app-tab');
@@ -25,8 +25,13 @@ export const AppTab = GObject.registerClass({
         this._init_close_button();
 
         this.connect('clicked', () => {
-            if (this.get_current_window()) {
-                this.get_current_window().activate(0);
+            if (this.get_current_window() != null) {
+                if (this.get_current_window().minimized) {
+                    this.get_current_window().activate(0);
+                } else {
+                    this.get_current_window().minimize();
+                    this.set_style(this._get_tab_style(false));
+                }
             }
         });
     }
@@ -66,13 +71,13 @@ export const AppTab = GObject.registerClass({
 
     _get_tab_style(is_active = false, is_hover = false) {
         let style = '';
-        let tab_style = {}, mode_tab_style= {};
+        let tab_style = {}, mode_tab_style = {};
         if (this._style_config.default) {
             tab_style = this._extract_config_style(this._style_config.default, is_active, is_hover);
         }
         if (!this._is_dark_mode && this._style_config.light_mode) {
             mode_tab_style = this._extract_config_style(this._style_config.light_mode, is_active, is_hover);
-        } else if (this._is_dark_mode && this._style_config.dark_mode){
+        } else if (this._is_dark_mode && this._style_config.dark_mode) {
             mode_tab_style = this._extract_config_style(this._style_config.dark_mode, is_active, is_hover);
         }
         for (let name in mode_tab_style) {
