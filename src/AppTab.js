@@ -24,9 +24,9 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._init_label();
         this._init_close_button();
 
-        this.connect('clicked', (first, second, third) => {
+        this.connect('clicked', () => {
             if (this.get_current_window() != null) {
-                if (!this.get_current_window().is_active) {
+                if (!this.get_current_window().has_focus()) {
                     this.get_current_window().activate(0);
                 } else {
                     this.get_current_window().minimize();
