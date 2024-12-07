@@ -4,6 +4,12 @@ import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import GLib from 'gi://GLib';
+import * as WindowUtils from './utils/WindowUtils.js';
+import Meta from 'gi://Meta';
+import * as StringUtils from './utils/StringUtils.js';
 
 export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
     _init(props) {
@@ -23,7 +29,14 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._init_icon();
         this._init_label();
         this._init_close_button();
+        this._initMenu();
 
+        this.connect('button-press-event', (actor, event) => {
+            if (event.get_button() === Clutter.BUTTON_SECONDARY) { // 检查是否为鼠标右键
+                this._menu.toggle();
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
         this.connect('clicked', () => {
             if (this.get_current_window() != null) {
                 if (!this.get_current_window().has_focus()) {
@@ -169,6 +182,7 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._controls = null;
         this._label = null;
         this._divide = null;
+        this._menu = null;
         super.destroy();
     }
 
@@ -240,5 +254,90 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
             duration: Overview.ANIMATION_TIME,
         });
+    }
+
+    _initMenu() {
+        this._menu = new PopupMenu.PopupMenu(this, 0.0, St.Side.TOP);
+        this._menu.actor.add_style_class_name('panel-menu');
+        Main.uiGroup.add_child(this._menu.actor);
+        this._menu.actor.hide();
+
+        const showMenuItem = new PopupMenu.PopupMenuItem('Activate');
+        showMenuItem.connect('activate', () => {
+            this.get_current_window().activate(0);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(showMenuItem);
+
+        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Minimize');
+        minimizeMenuItem.connect('activate', () => {
+            this.get_current_window().minimize();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(minimizeMenuItem);
+
+        const maximizeMenuItem = new PopupMenu.PopupMenuItem('Maximize');
+        maximizeMenuItem.connect('activate', () => {
+            this.get_current_window().activate(0);
+            this.get_current_window().maximize(Meta.MaximizeFlags.BOTH);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(maximizeMenuItem);
+
+        const unMaximizeMenuItem = new PopupMenu.PopupMenuItem('UnMaximize');
+        unMaximizeMenuItem.connect('activate', () => {
+            this.get_current_window().unmaximize(Meta.MaximizeFlags.BOTH);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(unMaximizeMenuItem);
+
+        const pinMenuItem = new PopupMenu.PopupMenuItem('Pin');
+        pinMenuItem.connect('activate', () => {
+            this.get_current_window().activate(0);
+            this.get_current_window().make_above();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(pinMenuItem);
+
+        const unPinMenuItem = new PopupMenu.PopupMenuItem('UnPin');
+        unPinMenuItem.connect('activate', () => {
+            this.get_current_window().unmake_above();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(unPinMenuItem);
+
+        const getProcInfoMenuItem = new PopupMenu.PopupMenuItem('Get process information');
+        getProcInfoMenuItem.connect('activate', () => {
+            let pid = this.get_current_window().get_pid();
+            let processInfo = WindowUtils.getProcessInfo(pid);
+            this.copyToClipboard(processInfo);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(getProcInfoMenuItem);
+
+        const closeMenuItem = new PopupMenu.PopupMenuItem('Close');
+        closeMenuItem.connect('activate', () => {
+            this.get_current_window().delete(global.get_current_time());
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(closeMenuItem);
+
+        const forceKillMenuItem = new PopupMenu.PopupMenuItem('Force kill (Warning!!)');
+        forceKillMenuItem.connect('activate', () => {
+            let pid = this.get_current_window().get_pid();
+            let [success, output] = GLib.spawn_command_line_sync(`ps -p ${pid} -o comm=`);
+            if (success && output) {
+                let appName = StringUtils.readString(output).trim();
+                if (appName !== 'gnome-shell') {
+                    this.get_current_window().kill();
+                }
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(forceKillMenuItem);
+    }
+
+    copyToClipboard(text) {
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, text);
     }
 });
