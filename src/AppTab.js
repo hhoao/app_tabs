@@ -17,6 +17,8 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
             x_expand: true,
             y_expand: true,
         });
+
+        this._menu_manager = props.menu_manager;
         this._settings = props.settings;
         this._is_dark_mode = props.is_dark_mode;
         this._style_config = props.style_config;
@@ -175,6 +177,8 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._label.destroy();
         this._close_button.destroy();
         this._controls.destroy();
+        this._menu.destroy();
+        this._menu_manager = null
         this._settings = null;
         this._current_window = null;
         this._icon = null;
@@ -335,6 +339,8 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(forceKillMenuItem);
+        this._menu_manager.addMenu(this._menu);
+
     }
 
     copyToClipboard(text) {
