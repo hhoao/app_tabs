@@ -10,6 +10,7 @@ import Logger from './utils/Logger.js';
 import {AppTab} from './AppTab.js';
 import Clutter from 'gi://Clutter';
 import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -21,6 +22,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._target_app = null;
         this._update_windows_later_id = 0;
         this._current_tabs_count = 0;
+        this._menu_manager = new PopupMenu.PopupMenuManager(this);
         this._logger = new Logger('TabPanel');
         this.add_style_class_name('app-tabs');
         this.remove_style_class_name('panel-button');
@@ -152,6 +154,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._controls.destroy();
         this._scroll_view.destroy();
 
+        this._menu_manager = null;
         this._scroll_view = null;
         this._desktop_settings = null;
         this._settings = null;
@@ -189,6 +192,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 style_config: JSON.parse(this._settings.get_string(SchemaKeyConstants.APP_TAB_CONFIG)),
                 is_dark_mode: this._desktop_settings.get_string(SchemaKeyConstants.GTK_THEME),
                 settings: this._settings,
+                menu_manager: this._menu_manager,
             });
             app_tab.set_divide(divide);
             app_tab.hide();
