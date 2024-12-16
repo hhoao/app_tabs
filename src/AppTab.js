@@ -10,6 +10,8 @@ import GLib from 'gi://GLib';
 import * as WindowUtils from './utils/WindowUtils.js';
 import Meta from 'gi://Meta';
 import * as StringUtils from './utils/StringUtils.js';
+import Gio from "gi://Gio";
+import { getExtensionObject } from "../extension.js";
 
 export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
     _init(props) {
@@ -109,11 +111,19 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
     }
 
     _init_close_button() {
+        const close_icon = new St.Icon({
+            gicon:  Gio.icon_new_for_string(
+                getExtensionObject().path + "/icons/close.svg"
+            ),
+            style_class: "close-icon",
+            icon_size: "16",
+        });
         this._close_button = new St.Button({
-            label: '×',
+            label: '',
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.END,
         });
+        this._close_button.add_child(close_icon);
         this._close_button.connect('clicked', () => {
             if (this.get_current_window() && this.get_current_window().can_close()) {
                 this.get_current_window()?.disconnectObject(this);

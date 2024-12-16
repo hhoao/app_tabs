@@ -4,8 +4,11 @@ import Logger from './src/utils/Logger.js';
 import Config from './src/config/Config.js';
 import {TabPanel} from './src/TabPanel.js';
 
+
+export const getExtensionObject = () => globalThis.DockerContainersExtension;
 export default class AppTabsExtension extends Extension {
     enable() {
+        globalThis.DockerContainersExtension = this;
         this._logger = new Logger("AppTabsExtension")
         this._config = new Config();
         this._tabs = new TabPanel(
@@ -20,6 +23,7 @@ export default class AppTabsExtension extends Extension {
     }
 
     disable() {
+        delete globalThis.DockerContainersExtension;
         this._logger.info("Disabling extension...");
         this._logger = null;
         this._config = null;
