@@ -1,5 +1,6 @@
 #!/bin/bash
 include_files=(
+icons
 src
 stylesheet.css
 extension.js
