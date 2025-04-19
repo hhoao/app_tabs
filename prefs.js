@@ -27,9 +27,11 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
             description: 'Configure the appearance of the extension',
         });
         const ellipsize_mode_switch = this.get_ellipsize_mode_row(settings);
+        const only_display_current_workspace_tabs_switch = this.get_only_display_current_workspace_row(settings);
         const max_width_row = this.get_max_width_row(settings);
         group.add(max_width_row);
         group.add(ellipsize_mode_switch);
+        group.add(only_display_current_workspace_tabs_switch);
         return group;
     }
     get_max_width_row(settings) {
@@ -56,6 +58,23 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         ellipsis_mode_row.activatable_widget = ellipsize_mode_switch;
         return ellipsis_mode_row;
     };
+
+    get_only_display_current_workspace_row = (settings) => {
+        const key_name = SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE;
+        const gtk_switch = new Gtk.Switch({
+            active: true,
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(key_name, gtk_switch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const action_row = new Adw.ActionRow({
+            title: 'Only display tabs on current workspace',
+        });
+        action_row.add_suffix(gtk_switch);
+        action_row.activatable_widget = gtk_switch;
+        return action_row;
+    };
+
     get_app_tab_config_group = (settings, window) => {
         const app_tab_config_group = new Adw.PreferencesGroup({
             title: 'Application Tab Configuration',

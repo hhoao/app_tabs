@@ -4,5 +4,5 @@
   "url": "https://github.com/hhoao/app_tabs",
   "uuid": "huanghaohhoa@163.com",
   "settings-schema": "org.gnome.shell.extensions.app_tabs",
-  "shell-version": ["45", "46", "47"]
+  "shell-version": ["45", "46", "47", "48"]
 }

@@ -28,6 +28,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this.remove_style_class_name('panel-button');
         this._scroll_view = this.get_horizontal_scroll_view();
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
+        this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
+
         this._controls = new St.BoxLayout({style_class: 'app-tabs-box'});
         this._scroll_view.add_child(this._controls);
         this.add_child(this._scroll_view);
@@ -55,6 +57,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this,
         );
         this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE),
+            this._on_only_display_tabs_on_current_workspace_changed.bind(this),
+            this
+        )
+        this._settings.connectObject(
             this.get_changed_key(SchemaKeyConstants.ELLIPSIZE_MODE),
             this._on_ellipsize_mode_changed.bind(this),
             this,
@@ -71,6 +78,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         );
     }
 
+    _on_only_display_tabs_on_current_workspace_changed(settings, key) {
+        this.only_display_tabs_on_current_workspace = settings.get_boolean(key)
+    }
     _on_panel_max_width_changed(settings, key) {
         this.set_panel_max_width(settings.get_int(key));
     }
@@ -274,7 +284,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             return;
         }
 
-        const windows = app.get_windows().filter(w => !w.skip_taskbar);
+        let windows;
+        if (this.only_display_tabs_on_current_workspace) {
+            let workspace_manager = global.workspace_manager;
+            let workspace = workspace_manager.get_active_workspace();
+            windows = app.get_windows().filter(w => !w.skip_taskbar && w.get_workspace() === workspace);
+        } else {
+            windows = app.get_windows().filter(w => !w.skip_taskbar);
+        }
         let info = this._get_windows_info(windows);
         if (info[0].length > 0) {
             this._add_tabs_by_windows(app, info[0]);
