@@ -44,6 +44,7 @@ You can configure app tab style like this on preferences, and the style use the 
 ## DEBUG
 Gnome Shell:
 ```bash
+export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
 dbus-run-session -- gnome-shell --nested --wayland
 ```
 Preferences:

@@ -103,11 +103,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             enable_mouse_scrolling: false,
         });
         scroll_view.connect('scroll-event', (actor, event) => {
-            let scroll_view_adjustment = scroll_view.hscroll.adjustment;
+            let scroll_view_adjustment = scroll_view.get_hadjustment();
             let increment_value = 0;
-            if (event.get_scroll_direction() === Clutter.ScrollDirection.DOWN) {
+            if (event.get_scroll_direction() === Clutter.ScrollDirection.RIGHT ||
+                event.get_scroll_direction() === Clutter.ScrollDirection.DOWN) {
                 increment_value = scroll_view_adjustment.step_increment;
-            } else if (event.get_scroll_direction() === Clutter.ScrollDirection.UP) {
+            } else if (event.get_scroll_direction() === Clutter.ScrollDirection.LEFT ||
+                event.get_scroll_direction() === Clutter.ScrollDirection.UP) {
                 increment_value = -scroll_view_adjustment.step_increment;
             }
 
