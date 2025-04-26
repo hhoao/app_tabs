@@ -1,6 +1,6 @@
 {
   "name": "Application Tabs",
-  "description": "Panel will include a different window tab for the same application that is currently launched.\n1. You can see the application window intuitively\n2. Click tab to jump to or hide the corresponding window immediately.\n3. Click the Close button to close the window.\n4. Right click tab to show window function menu.",
+  "description": "Panel will include a different window tab for the same application that is currently launched.\n1. You can see the application window intuitively\n2. Click tab to jump to or hide the corresponding window immediately.\n3. Click the Close button to close the window.\n4. Right click tab to show window function menu.\nWelcome to submit questions and features to repository.",
   "url": "https://github.com/hhoao/app_tabs",
   "uuid": "huanghaohhoa@163.com",
   "settings-schema": "org.gnome.shell.extensions.app_tabs",
