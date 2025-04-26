@@ -59,3 +59,7 @@ gnome-extensions prefs huanghaohhoa@163.com
 3. Click the Close button to close the window.
 
 If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.
+
+## Development Document
+* https://gjs-docs.gnome.org/
+* https://gjs.guide/guides/
