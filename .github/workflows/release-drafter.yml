@@ -30,7 +30,7 @@ jobs:
         run: |
           datetime=$(date +'%Y%m%d%H%M%S');
           echo "datetime=${datetime}" >> "$GITHUB_OUTPUT";
-          echo "version=${{ steps.release_drafter.outputs.name }}_${datetime}" >> "$GITHUB_OUTPUT";
+          echo "version=app_tabs_${{ steps.github.release_drafter.outputs.name }}_${datetime}" >> "$GITHUB_OUTPUT";
       - name: Package
         run: |
           bash ./package.sh ${{ steps.generate_datetime_and_version.outputs.version }};
