@@ -7,6 +7,7 @@ metadata.json
 prefs.js
 LICENSE
 schemas
+icons
 )
 
 args=""
