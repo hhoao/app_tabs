@@ -47,6 +47,9 @@ Gnome Shell:
 export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
 dbus-run-session -- gnome-shell --nested --wayland
 ```
+```bash
+glib-compile-schemas schemas/
+```
 Preferences:
 ```bash
 journalctl -f -o cat /usr/bin/gjs
