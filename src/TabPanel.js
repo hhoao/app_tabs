@@ -7,30 +7,37 @@ import Gio from 'gi://Gio';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import Logger from './utils/Logger.js';
-import {AppTab} from './AppTab.js';
+import { AppTab } from './AppTab.js';
 import Clutter from 'gi://Clutter';
-import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
+import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
         super._init(1.0, null, true);
         this._settings = props.settings;
-        this._desktop_settings = new Gio.Settings({schema: 'org.gnome.desktop.interface'});
+        this._desktop_settings = new Gio.Settings({ schema: 'org.gnome.desktop.interface' });
         this._config = props.config;
         this._tabs_pool = [];
         this._target_app = null;
         this._update_windows_later_id = 0;
         this._current_tabs_count = 0;
         this._menu_manager = new PopupMenu.PopupMenuManager(this);
-        this._logger = new Logger('TabPanel');
+        // Propriedades para drag & drop
+        this._dragging_tab = null;
+        this._drag_placeholder = null;
+        this._windows_order = new Map(); // Mapeia window.get_id() para posição personalizada
+
+        // Carrega ordem salva das configurações
+        this._load_saved_tabs_order();
+
         this.add_style_class_name('app-tabs');
         this.remove_style_class_name('panel-button');
         this._scroll_view = this.get_horizontal_scroll_view();
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
 
-        this._controls = new St.BoxLayout({style_class: 'app-tabs-box'});
+        this._controls = new St.BoxLayout({ style_class: 'app-tabs-box' });
         this._scroll_view.add_child(this._controls);
         this.add_child(this._scroll_view);
         this._init_pool_tabs();
@@ -41,8 +48,19 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         Shell.WindowTracker.get_default().connectObject('notify::focus-app',
             this._focus_app_changed.bind(this), this);
         global.window_manager.connectObject('switch-workspace',
-            this._sync.bind(this), this);
+            this._on_workspace_switched.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this);
+
+        // Detecta quando o GNOME Shell é inicializado/reiniciado
+        // Usa timeout para executar sync após a inicialização completa
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+            this._on_shell_startup();
+            return GLib.SOURCE_REMOVE;
+        });
+
+        // Detecta quando o shell é reiniciado via Alt+F2+r
+        Main.layoutManager.connectObject('startup-complete', this._on_shell_startup.bind(this), this);
+
         this._listen_settings();
     }
 
@@ -149,9 +167,25 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         for (let i = 0; i < this._current_tabs_count; i++) {
             this._tabs_pool[i].on_active(window);
         }
-    }
+    } destroy() {
+        this._clear_drag_timer();
 
-    destroy() {
+        // Limpa eventos globais de drag se ainda estão ativos
+        if (this._stage_motion_id) {
+            global.stage.disconnect(this._stage_motion_id);
+            this._stage_motion_id = null;
+        }
+        if (this._stage_release_id) {
+            global.stage.disconnect(this._stage_release_id);
+            this._stage_release_id = null;
+        }
+
+        // Limpa placeholder se ainda existir
+        if (this._drag_placeholder && this._drag_placeholder.get_parent()) {
+            this._drag_placeholder.get_parent().remove_child(this._drag_placeholder);
+            this._drag_placeholder = null;
+        }
+
         this._scroll_view?.disconnectObject(this);
         this._desktop_settings?.disconnectObject(this);
         this._settings?.disconnectObject(this);
@@ -160,6 +194,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         global.window_manager?.disconnectObject(this);
         Shell.WindowTracker?.get_default().disconnectObject(this);
         Shell.AppSystem.get_default()?.disconnectObject(this);
+        Main.layoutManager?.disconnectObject(this);
         for (let tab of this._tabs_pool) {
             tab.destroy();
         }
@@ -174,7 +209,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._current_tabs_count = null;
         this._target_app = null;
         this._update_windows_later_id = null;
-        this._logger = null;
         this._controls = null;
         super.destroy();
     }
@@ -221,6 +255,22 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 return;
             }
         }
+        this._sync();
+    }
+
+    /**
+     * Callback chamado quando o workspace é alterado
+     * Limpa todas as guias e mostra popup informativo
+     */
+    _on_workspace_switched() {
+
+        this._target_app = null;
+        this._reset_all_tabs();
+        this._sync();
+    }
+    
+    _on_shell_startup() {
+        this._reset_all_tabs();
         this._sync();
     }
 
@@ -360,7 +410,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._current_tabs_count + windows.length > this._tabs_pool.length) {
             this._add_pool_tabs(this._current_tabs_count + windows.length - this._tabs_pool.length);
         }
-        windows.forEach((window) => {
+
+        // Ordena as janelas baseado na ordem personalizada ou ordem natural
+        let sorted_windows = this._sort_windows_by_custom_order(windows);
+
+        sorted_windows.forEach((window) => {
             let tab = this._tabs_pool[this._current_tabs_count];
             tab.set_text(window.get_title() || app.get_name());
             tab.set_icon(app.get_icon());
@@ -369,16 +423,479 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 tab.set_text(window.get_title() || this._app.get_name());
             }, tab);
             tab.set_current_window(window);
+            this._setup_tab_drag_and_drop(tab);
+
+            tab.connect('move-tab', (tab, direction) => {
+                this._move_tab_by_direction(tab, direction);
+            });
+
+            tab.connect('close-tab', () => {
+                this._on_tab_close_button_clicked(tab);
+            });
+
+            // Detect when window is closed
+            window.connectObject('unmanaged', () => {
+                let corresponding_tab = this._find_tab_by_window(window);
+                if (corresponding_tab) {
+                    this._reset_tab(corresponding_tab);
+                } else {
+                }
+
+                window.connectObject('workspace-changed', () => {
+                    if (this.only_display_tabs_on_current_workspace) {
+                        // this._show_window_closed_popup(window);
+                        this._force_update_tabs();
+                    }
+                }, this);
+                // Listener para mudanças de workspace (se a configuração estiver ativa)
+                window.connectObject('workspace-changed', () => {
+                    if (this.only_display_tabs_on_current_workspace) {
+                        // this._show_window_closed_popup(window);
+                        this._force_update_tabs();
+                    }
+                }, this);
+                // this._show_window_closed_popup(window);
+            }, this);
+
+            window.connectObject('workspace-changed', () => {
+                if (this.only_display_tabs_on_current_workspace) {
+                    // this._show_window_closed_popup(window);
+                    this._force_update_tabs();
+                }
+            }, this);
+
             this._current_tabs_count++;
         });
     }
 
-    /**
-     * @param indexes Needs to be removed tab index in pool
-     */
-    _remove_tab(indexes) {
-        indexes.forEach((i) => {
-            this._reset_tab(this._tabs_pool[i]);
+    _sort_windows_by_custom_order(windows) {
+        return windows.slice().sort((a, b) => {
+            let order_a = this._windows_order.get(a.get_id()) ?? 999999;
+            let order_b = this._windows_order.get(b.get_id()) ?? 999999;
+            return order_a - order_b;
         });
+    }
+
+    _setup_tab_drag_and_drop(tab) {
+        tab.reactive = true;
+        tab._draggable = true;
+
+        tab.connect('button-press-event', (actor, event) => {
+            if (event.get_button() === Clutter.BUTTON_PRIMARY) {
+                // Verify if Ctrl is pressed
+                if (event.get_state() & Clutter.ModifierType.CONTROL_MASK) {
+                    this._show_hello_world_popup(tab);
+                    return Clutter.EVENT_STOP;
+                } else {
+                    this._start_drag_timer(tab, event);
+                }
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+
+        tab.connect('button-release-event', (actor, event) => {
+            this._clear_drag_timer();
+            if (this._dragging_tab === tab) {
+                this._end_drag(tab);
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+
+        tab.connect('motion-event', (actor, event) => {
+            if (this._dragging_tab === tab) {
+                this._handle_drag_motion(tab, event);
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
+    }
+
+    _start_drag_timer(tab, event) {
+        this._clear_drag_timer();
+        this._drag_start_position = event.get_coords();
+
+        this._drag_timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+            this._start_drag(tab);
+            this._drag_timer = null;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _clear_drag_timer() {
+        if (this._drag_timer) {
+            GLib.source_remove(this._drag_timer);
+            this._drag_timer = null;
+        }
+    }
+    
+    _start_drag(tab) {
+        this._dragging_tab = tab;
+        tab.add_style_class_name('app-tab-dragging');
+        this._initial_drag_position = this._get_tab_index(tab);
+
+        // Captura a posição atual do cursor no momento do início do drag
+        let [current_mouse_x, current_mouse_y] = global.get_pointer();
+
+        // Salva a posição inicial da guia para cálculos de offset
+        this._drag_start_tab_position = tab.get_transformed_position()[0];
+        this._drag_start_mouse_position = current_mouse_x; // Usa posição atual do cursor
+
+        // Atualiza a posição salva do drag_start_position para a posição atual
+        this._drag_start_position = [current_mouse_x - 4, current_mouse_y];
+
+        // Cria um clone da guia para seguir o mouse
+        this._create_drag_clone(tab);
+
+        // Captura eventos globais para detectar movimento e release
+        this._stage_motion_id = global.stage.connect('motion-event', this._on_stage_motion.bind(this));
+        this._stage_release_id = global.stage.connect('button-release-event', this._on_stage_release.bind(this));
+    }
+
+    /**
+     * Cria um clone visual da guia para seguir o mouse
+     */
+    _create_drag_clone(tab) {
+        // Salva a posição Y original para manter a guia no mesmo nível
+        this._original_tab_y = tab.get_y();
+
+        // Torna a guia original semi-transparente
+        tab.opacity = 255;
+
+        // Remove a guia da posição original temporariamente
+        let divide = tab.get_divide();
+        this._original_tab_parent = this._controls;
+        this._original_tab_index = this._controls.get_children().indexOf(tab);
+        this._original_divide_index = this._controls.get_children().indexOf(divide);
+
+        // Cria um placeholder no lugar da guia original
+        this._create_placeholder(tab);
+    }
+
+    /**
+     * Cria um placeholder no lugar da guia original
+     */
+    _create_placeholder(tab) {
+        this._drag_placeholder = new St.Widget({
+            width: tab.get_width() - 4,
+            height: tab.get_height() - 4,
+            style_class: 'app-tab-placeholder'
+        });
+
+        let tab_index = this._controls.get_children().indexOf(tab);
+        this._controls.insert_child_at_index(this._drag_placeholder, tab_index);
+
+        // Move a guia para o Main.uiGroup para que possa flutuar sobre tudo
+        this._controls.remove_child(tab);
+        this._controls.remove_child(tab.get_divide());
+        Main.uiGroup.add_child(tab);
+
+        // Calcula a posição inicial baseada no cursor atual
+        let current_mouse_x = this._drag_start_position[0];
+        let offset_x = current_mouse_x - this._drag_start_mouse_position;
+        let initial_x = this._drag_start_tab_position + offset_x;
+
+        // Posiciona a guia exatamente onde o cursor está
+        tab.set_position(initial_x, this._original_tab_y);
+    }
+
+    /** Handle global motion events during the drag */
+    _on_stage_motion(actor, event) {
+        if (this._dragging_tab) {
+            this._handle_drag_motion(this._dragging_tab, event);
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    /** Handle global release during the drag */
+    _on_stage_release(actor, event) {
+        if (this._dragging_tab) {
+            this._end_drag(this._dragging_tab);
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+
+    _handle_drag_motion(tab, event) {
+        let [x, y] = event.get_coords();
+
+        let offset_x = x - this._drag_start_mouse_position;
+        let new_x = this._drag_start_tab_position + offset_x;
+        tab.set_position(new_x - 4, this._original_tab_y);  // -4 because of border 2px on each side
+
+        // Find ideal position based on mouse
+        let visible_tabs = this._get_visible_tabs().filter(t => t !== tab);
+        let target_index = this._find_closest_tab_index(x, visible_tabs);
+
+        // Update placeholder position if needed
+        this._update_placeholder_position(target_index);
+    }
+
+    _update_placeholder_position(target_index) {
+        if (!this._drag_placeholder) return;
+
+        let current_index = this._controls.get_children().indexOf(this._drag_placeholder);
+        let desired_index = target_index * 2; // x2 because of separators
+
+        if (Math.floor(current_index / 2) !== target_index) {
+            this._controls.remove_child(this._drag_placeholder);
+
+            let children = this._controls.get_children();
+            if (desired_index >= children.length) {
+                this._controls.add_child(this._drag_placeholder);
+            } else {
+                this._controls.insert_child_at_index(this._drag_placeholder, desired_index);
+            }
+        }
+    }
+
+    _find_closest_tab_index(x, visible_tabs) {
+        for (let i = 0; i < visible_tabs.length; i++) {
+            let tab = visible_tabs[i];
+            let [tab_x, tab_y] = tab.get_transformed_position();
+            let tab_width = tab.get_width();
+
+            if (x < tab_x + tab_width / 2) {
+                return i;
+            }
+        }
+        return visible_tabs.length;
+    }
+
+    _move_tab_to_position(tab, target_index) {
+        let divide = tab.get_divide();
+
+        // Remove from current position
+        this._controls.remove_child(divide);
+        this._controls.remove_child(tab);
+
+        // Insert at new position
+        let children = this._controls.get_children();
+        let insert_at = target_index * 2; // *2 por causa dos separadores
+
+        if (insert_at >= children.length) {
+            this._controls.add_child(divide);
+            this._controls.add_child(tab);
+        } else {
+            this._controls.insert_child_at_index(divide, insert_at);
+            this._controls.insert_child_at_index(tab, insert_at + 1);
+        }
+    }
+
+    _get_tab_index(tab) {
+        let visible_tabs = this._get_visible_tabs();
+        return visible_tabs.indexOf(tab);
+    }
+
+    _end_drag(tab) {
+        if (!this._dragging_tab) return;
+
+        tab.remove_style_class_name('app-tab-dragging');
+        tab.opacity = 255;
+
+        Main.uiGroup.remove_child(tab);
+
+        // Find where to insert the tab based on the placeholder position
+        let placeholder_index = this._controls.get_children().indexOf(this._drag_placeholder);
+        let target_index = Math.floor(placeholder_index / 2);
+
+        // Remove placeholder
+        if (this._drag_placeholder) {
+            this._controls.remove_child(this._drag_placeholder);
+            this._drag_placeholder = null;
+        }
+
+        this._insert_tab_at_position(tab, target_index);
+
+        // Atualiza a ordem salva baseada na posição final
+        this._update_saved_order_from_current_positions();
+
+        // Clear drag state
+        this._dragging_tab = null;
+        this._initial_drag_position = null;
+        this._drag_start_tab_position = null;
+        this._drag_start_mouse_position = null;
+        this._original_tab_y = null;
+
+        // Remove global event listeners
+        if (this._stage_motion_id) {
+            global.stage.disconnect(this._stage_motion_id);
+            this._stage_motion_id = null;
+        }
+        if (this._stage_release_id) {
+            global.stage.disconnect(this._stage_release_id);
+            this._stage_release_id = null;
+        }
+    }
+
+    _insert_tab_at_position(tab, target_index) {
+        let divide = tab.get_divide();
+        let children = this._controls.get_children();
+        let insert_at = target_index * 2; // *2 por causa dos separadores
+
+        if (insert_at >= children.length) {
+            this._controls.add_child(divide);
+            this._controls.add_child(tab);
+        } else {
+            this._controls.insert_child_at_index(divide, insert_at);
+            this._controls.insert_child_at_index(tab, insert_at + 1);
+        }
+
+        tab.set_position(0, 0);
+    }
+
+    _update_saved_order_from_current_positions() {
+        let visible_tabs = this._get_visible_tabs();
+        visible_tabs.forEach((tab, index) => {
+            let window = tab.get_current_window();
+            if (window) {
+                this._windows_order.set(window.get_id(), index);
+            }
+        });
+        this._save_tabs_order();
+    }
+
+    _reorder_tab(tab, new_index) {
+        let visible_tabs = this._get_visible_tabs();
+        let current_index = visible_tabs.indexOf(tab);
+
+        if (current_index === -1 || current_index === new_index) return;
+
+        // Atualiza a ordem personalizada
+        this._update_windows_order(visible_tabs, current_index, new_index);
+
+        // Reordena visualmente
+        this._reorder_tabs_visually();
+    }
+
+    _get_visible_tabs() {
+        return this._controls.get_children().filter(child =>
+            child instanceof AppTab && child.visible
+        );
+    }
+
+    _update_windows_order(visible_tabs, from_index, to_index) {
+        let moved_tab = visible_tabs.splice(from_index, 1)[0];
+        visible_tabs.splice(to_index, 0, moved_tab);
+
+        visible_tabs.forEach((tab, index) => {
+            let window = tab.get_current_window();
+            if (window) {
+                this._windows_order.set(window.get_id(), index);
+            }
+        });
+
+        this._save_tabs_order();
+    }
+
+    _reorder_tabs_visually() {
+        let visible_tabs = this._get_visible_tabs();
+
+        // Remove tab from container
+        visible_tabs.forEach(tab => {
+            let divide = tab.get_divide();
+            this._controls.remove_child(divide);
+            this._controls.remove_child(tab);
+        });
+
+        // Sort by custom order
+        let sorted_tabs = visible_tabs.slice().sort((a, b) => {
+            let window_a = a.get_current_window();
+            let window_b = b.get_current_window();
+            let order_a = window_a ? this._windows_order.get(window_a.get_id()) ?? 999999 : 999999;
+            let order_b = window_b ? this._windows_order.get(window_b.get_id()) ?? 999999 : 999999;
+            return order_a - order_b;
+        });
+
+        // Add again in sorted order
+        sorted_tabs.forEach(tab => {
+            let divide = tab.get_divide();
+            this._controls.add_child(divide);
+            this._controls.add_child(tab);
+        });
+    }
+
+    _move_tab_by_direction(tab, direction) {
+        let visible_tabs = this._get_visible_tabs();
+        let current_index = visible_tabs.indexOf(tab);
+
+        if (current_index === -1) return;
+
+        let new_index = current_index + direction;
+        new_index = Math.max(0, Math.min(new_index, visible_tabs.length - 1));
+
+        if (new_index !== current_index) {
+            this._reorder_tab(tab, new_index);
+        }
+    }
+
+    _load_saved_tabs_order() {
+        try {
+            let saved_order = this._settings.get_string(SchemaKeyConstants.TABS_ORDER);
+            if (saved_order) {
+                let order_data = JSON.parse(saved_order);
+                for (let window_id in order_data) {
+                    this._windows_order.set(parseInt(window_id), order_data[window_id]);
+                }
+            }
+        } catch (e) {
+            this._windows_order.clear();
+        }
+    }
+
+    _save_tabs_order() {
+        try {
+            let order_data = {};
+            for (let [window_id, position] of this._windows_order.entries()) {
+                order_data[window_id] = position;
+            }
+            this._settings.set_string(SchemaKeyConstants.TABS_ORDER, JSON.stringify(order_data));
+        } catch (e) {
+        }
+    }
+    
+    _show_hello_world_popup(tab) {
+        try {
+            Main.notify("Hello World!", "Ctrl+clique detectado na guia! Executando sync...");
+
+        } catch (error) {
+            console.log('Hello World! Ctrl+clique detectado na guia! Executando sync...');
+        }
+
+        this._focus_app_changed();
+    }
+
+    _find_tab_by_window(window) {
+        for (let i = 0; i < this._current_tabs_count; i++) {
+            let tab = this._tabs_pool[i];
+            if (tab.get_current_window() === window) {
+                return tab;
+            }
+        }
+        return null;
+    }
+
+    _on_tab_close_button_clicked(tab) {
+        try {
+            this._reset_tab(tab);
+        } catch (error) {
+        }
+    }
+
+    _on_window_removed(display, window) {
+        // this._show_window_closed_popup(window);
+        this._force_update_tabs();
+    }
+
+    _on_window_closed(display, window) {
+        this._force_update_tabs();
+    }
+
+    _show_window_closed_popup(window) {
+        try {
+            let window_title = window ? window.get_title() : 'Desconhecida';
+            let message = `Janela fechada: ${window_title}`;
+
+            Main.notify('Application Tabs', message, null);
+        } catch (e) {
+            Main.notify('Application Tabs', 'Janela fechada', null);
+        }
     }
 });

@@ -3,7 +3,7 @@ import * as Overview from 'resource:///org/gnome/shell/ui/overview.js';
 import St from 'gi://St';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
-import {SchemaKeyConstants} from '../src/config/SchemaKeyConstants.js';
+import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import GLib from 'gi://GLib';
@@ -13,7 +13,12 @@ import * as StringUtils from './utils/StringUtils.js';
 import Gio from "gi://Gio";
 import { getExtensionObject } from "../extension.js";
 
-export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
+export const AppTab = GObject.registerClass({
+    Signals: {
+        'move-tab': { param_types: [GObject.TYPE_INT] },
+        'close-tab': {},
+    },
+}, class AppTab extends St.Button {
     _init(props) {
         super._init({
             x_expand: true,
@@ -32,11 +37,12 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._init_controls();
         this._init_icon();
         this._init_label();
+        this._init_drag_handle();
         this._init_close_button();
         this._initMenu();
 
         this.connect('button-press-event', (actor, event) => {
-            if (event.get_button() === Clutter.BUTTON_SECONDARY) { // 检查是否为鼠标右键
+            if (event.get_button() === Clutter.BUTTON_SECONDARY) { // 检查是否为鼠标右键 | check if right button
                 this._menu.toggle();
             }
             return Clutter.EVENT_PROPAGATE;
@@ -71,14 +77,14 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
     }
 
     _extract_config_style(style_config, is_active = false, is_hover = false) {
-        let tab_style = {...style_config.default_style};
+        let tab_style = { ...style_config.default_style };
         if (is_hover && style_config.hover_style) {
-            let hover_tab_style = {...style_config.hover_style};
+            let hover_tab_style = { ...style_config.hover_style };
             for (let name in hover_tab_style) {
                 tab_style[name] = hover_tab_style[name];
             }
         } else if (is_active && style_config.active_style) {
-            let active_tab_style = {...style_config.active_style};
+            let active_tab_style = { ...style_config.active_style };
             for (let name in active_tab_style) {
                 tab_style[name] = active_tab_style[name];
             }
@@ -112,7 +118,7 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
 
     _init_close_button() {
         const close_icon = new St.Icon({
-            gicon:  Gio.icon_new_for_string(
+            gicon: Gio.icon_new_for_string(
                 getExtensionObject().path + "/icons/close.svg"
             ),
             style_class: "close-icon",
@@ -128,6 +134,7 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
             if (this.get_current_window() && this.get_current_window().can_close()) {
                 this.get_current_window()?.disconnectObject(this);
                 this.get_current_window().delete(global.get_current_time());
+                this.emit('close-tab');
             }
         });
         this._close_button.add_style_class_name('app-tab-close-button');
@@ -173,18 +180,20 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._controls.add_child(this._label);
     }
 
-    switch_label_ellipsize_mode(value) {
-        let ellipsize_mode = Pango.EllipsizeMode.NONE;
-        if (value) {
-            ellipsize_mode = Pango.EllipsizeMode.END;
-        }
-        this._label.clutter_text.set_ellipsize(ellipsize_mode);
+    _init_drag_handle() {
+        this._drag_handle = new St.Label({
+            text: '',
+            style_class: 'app-tab-drag-handle',
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        this._controls.add_child(this._drag_handle);
     }
 
     destroy() {
         this._icon.destroy();
         this._divide.destroy();
         this._label.destroy();
+        this._drag_handle.destroy();
         this._close_button.destroy();
         this._controls.destroy();
         this._menu.destroy();
@@ -196,6 +205,7 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         this._controls = null;
         this._label = null;
         this._divide = null;
+        this._drag_handle = null;
         this._menu = null;
         super.destroy();
     }
@@ -320,6 +330,24 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
         });
         this._menu.addMenuItem(unPinMenuItem);
 
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        const moveLeftMenuItem = new PopupMenu.PopupMenuItem('Move Left ←');
+        moveLeftMenuItem.connect('activate', () => {
+            this._move_tab_left();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(moveLeftMenuItem);
+
+        const moveRightMenuItem = new PopupMenu.PopupMenuItem('Move Right →');
+        moveRightMenuItem.connect('activate', () => {
+            this._move_tab_right();
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(moveRightMenuItem);
+
+        this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
         const getProcInfoMenuItem = new PopupMenu.PopupMenuItem('Get process information');
         getProcInfoMenuItem.connect('activate', () => {
             let pid = this.get_current_window().get_pid();
@@ -355,5 +383,13 @@ export const AppTab = GObject.registerClass({}, class AppTab extends St.Button {
 
     copyToClipboard(text) {
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, text);
+    }
+
+    _move_tab_left() {
+        this.emit('move-tab', -1);
+    }
+
+    _move_tab_right() {
+        this.emit('move-tab', 1);
     }
 });
