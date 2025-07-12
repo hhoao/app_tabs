@@ -6,7 +6,6 @@ import Meta from 'gi://Meta';
 import Gio from 'gi://Gio';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import Logger from './utils/Logger.js';
 import { AppTab } from './AppTab.js';
 import Clutter from 'gi://Clutter';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
@@ -23,12 +22,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = 0;
         this._current_tabs_count = 0;
         this._menu_manager = new PopupMenu.PopupMenuManager(this);
-        // Propriedades para drag & drop
+
+        // Drag & drop
         this._dragging_tab = null;
         this._drag_placeholder = null;
-        this._windows_order = new Map(); // Mapeia window.get_id() para posição personalizada
+        this._windows_order = new Map(); // Maps window.get_id() to custom position
 
-        // Carrega ordem salva das configurações
         this._load_saved_tabs_order();
 
         this.add_style_class_name('app-tabs');
@@ -51,14 +50,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._on_workspace_switched.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this);
 
-        // Detecta quando o GNOME Shell é inicializado/reiniciado
-        // Usa timeout para executar sync após a inicialização completa
+        // Detect when GNOME Shell is initialized/restarted
+        // Use timeout to execute sync after complete initialization
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             this._on_shell_startup();
             return GLib.SOURCE_REMOVE;
         });
 
-        // Detecta quando o shell é reiniciado via Alt+F2+r
+        // Detect when shell is restarted via Alt+F2+r
         Main.layoutManager.connectObject('startup-complete', this._on_shell_startup.bind(this), this);
 
         this._listen_settings();
@@ -168,9 +167,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._tabs_pool[i].on_active(window);
         }
     } destroy() {
-        this._clear_drag_timer();
+        this._cancel_drag_preparation();
 
-        // Limpa eventos globais de drag se ainda estão ativos
+        // Clear global drag events if still active
         if (this._stage_motion_id) {
             global.stage.disconnect(this._stage_motion_id);
             this._stage_motion_id = null;
@@ -180,7 +179,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._stage_release_id = null;
         }
 
-        // Limpa placeholder se ainda existir
+        // Clear placeholder if it still exists
         if (this._drag_placeholder && this._drag_placeholder.get_parent()) {
             this._drag_placeholder.get_parent().remove_child(this._drag_placeholder);
             this._drag_placeholder = null;
@@ -258,17 +257,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._sync();
     }
 
-    /**
-     * Callback chamado quando o workspace é alterado
-     * Limpa todas as guias e mostra popup informativo
-     */
     _on_workspace_switched() {
-
         this._target_app = null;
         this._reset_all_tabs();
         this._sync();
     }
-    
+
     _on_shell_startup() {
         this._reset_all_tabs();
         this._sync();
@@ -411,7 +405,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._add_pool_tabs(this._current_tabs_count + windows.length - this._tabs_pool.length);
         }
 
-        // Ordena as janelas baseado na ordem personalizada ou ordem natural
+        // Sort windows based on custom order or natural order
         let sorted_windows = this._sort_windows_by_custom_order(windows);
 
         sorted_windows.forEach((window) => {
@@ -443,23 +437,19 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
                 window.connectObject('workspace-changed', () => {
                     if (this.only_display_tabs_on_current_workspace) {
-                        // this._show_window_closed_popup(window);
                         this._force_update_tabs();
                     }
                 }, this);
-                // Listener para mudanças de workspace (se a configuração estiver ativa)
+                // Listener for workspace changes (if setting is active)
                 window.connectObject('workspace-changed', () => {
                     if (this.only_display_tabs_on_current_workspace) {
-                        // this._show_window_closed_popup(window);
                         this._force_update_tabs();
                     }
                 }, this);
-                // this._show_window_closed_popup(window);
             }, this);
 
             window.connectObject('workspace-changed', () => {
                 if (this.only_display_tabs_on_current_workspace) {
-                    // this._show_window_closed_popup(window);
                     this._force_update_tabs();
                 }
             }, this);
@@ -487,14 +477,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                     this._show_hello_world_popup(tab);
                     return Clutter.EVENT_STOP;
                 } else {
-                    this._start_drag_timer(tab, event);
+                    this._prepare_drag(tab, event);
                 }
             }
             return Clutter.EVENT_PROPAGATE;
         });
 
         tab.connect('button-release-event', (actor, event) => {
-            this._clear_drag_timer();
+            this._cancel_drag_preparation();
             if (this._dragging_tab === tab) {
                 this._end_drag(tab);
             }
@@ -502,77 +492,84 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         });
 
         tab.connect('motion-event', (actor, event) => {
-            if (this._dragging_tab === tab) {
+            if (this._drag_prepared && this._drag_prepared_tab === tab) {
+                this._check_drag_threshold(tab, event);
+            } else if (this._dragging_tab === tab) {
                 this._handle_drag_motion(tab, event);
             }
             return Clutter.EVENT_PROPAGATE;
         });
     }
 
-    _start_drag_timer(tab, event) {
-        this._clear_drag_timer();
+    _prepare_drag(tab, event) {
+        this._cancel_drag_preparation();
+        this._drag_prepared = true;
+        this._drag_prepared_tab = tab;
         this._drag_start_position = event.get_coords();
-
-        this._drag_timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-            this._start_drag(tab);
-            this._drag_timer = null;
-            return GLib.SOURCE_REMOVE;
-        });
+        this._drag_threshold = 5; // 5px of threshold
     }
 
-    _clear_drag_timer() {
-        if (this._drag_timer) {
-            GLib.source_remove(this._drag_timer);
-            this._drag_timer = null;
+    _check_drag_threshold(tab, event) {
+        if (!this._drag_prepared) return;
+
+        let [current_x, current_y] = event.get_coords();
+        let [start_x, start_y] = this._drag_start_position;
+
+        let distance = Math.sqrt(
+            Math.pow(current_x - start_x, 2) +
+            Math.pow(current_y - start_y, 2)
+        );
+
+        if (distance >= this._drag_threshold) {
+            this._cancel_drag_preparation();
+            this._start_drag(tab);
         }
     }
-    
+
+    _cancel_drag_preparation() {
+        this._drag_prepared = false;
+        this._drag_prepared_tab = null;
+        this._drag_start_position = null;
+        this._drag_threshold = null;
+    }
+
     _start_drag(tab) {
         this._dragging_tab = tab;
         tab.add_style_class_name('app-tab-dragging');
         this._initial_drag_position = this._get_tab_index(tab);
 
-        // Captura a posição atual do cursor no momento do início do drag
+        // Capture current cursor position at the moment drag starts
         let [current_mouse_x, current_mouse_y] = global.get_pointer();
 
-        // Salva a posição inicial da guia para cálculos de offset
+        // Save initial tab position for offset calculations
         this._drag_start_tab_position = tab.get_transformed_position()[0];
-        this._drag_start_mouse_position = current_mouse_x; // Usa posição atual do cursor
+        this._drag_start_mouse_position = current_mouse_x; // Use current cursor position
 
-        // Atualiza a posição salva do drag_start_position para a posição atual
+        // Update saved drag_start_position to current position
         this._drag_start_position = [current_mouse_x - 4, current_mouse_y];
 
-        // Cria um clone da guia para seguir o mouse
         this._create_drag_clone(tab);
 
-        // Captura eventos globais para detectar movimento e release
+        // Capture global events to detect movement and release
         this._stage_motion_id = global.stage.connect('motion-event', this._on_stage_motion.bind(this));
         this._stage_release_id = global.stage.connect('button-release-event', this._on_stage_release.bind(this));
     }
 
-    /**
-     * Cria um clone visual da guia para seguir o mouse
-     */
     _create_drag_clone(tab) {
-        // Salva a posição Y original para manter a guia no mesmo nível
+        // Save original Y position to keep tab at same level
         this._original_tab_y = tab.get_y();
 
-        // Torna a guia original semi-transparente
         tab.opacity = 255;
 
-        // Remove a guia da posição original temporariamente
+        // Remove tab from original position temporarily
         let divide = tab.get_divide();
         this._original_tab_parent = this._controls;
         this._original_tab_index = this._controls.get_children().indexOf(tab);
         this._original_divide_index = this._controls.get_children().indexOf(divide);
 
-        // Cria um placeholder no lugar da guia original
         this._create_placeholder(tab);
     }
 
-    /**
-     * Cria um placeholder no lugar da guia original
-     */
     _create_placeholder(tab) {
         this._drag_placeholder = new St.Widget({
             width: tab.get_width() - 4,
@@ -583,17 +580,17 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         let tab_index = this._controls.get_children().indexOf(tab);
         this._controls.insert_child_at_index(this._drag_placeholder, tab_index);
 
-        // Move a guia para o Main.uiGroup para que possa flutuar sobre tudo
+        // Move tab to Main.uiGroup so it can float over everything
         this._controls.remove_child(tab);
         this._controls.remove_child(tab.get_divide());
         Main.uiGroup.add_child(tab);
 
-        // Calcula a posição inicial baseada no cursor atual
+        // Calculate initial position based on current cursor
         let current_mouse_x = this._drag_start_position[0];
         let offset_x = current_mouse_x - this._drag_start_mouse_position;
         let initial_x = this._drag_start_tab_position + offset_x;
 
-        // Posiciona a guia exatamente onde o cursor está
+        // Position tab exactly where cursor is
         tab.set_position(initial_x, this._original_tab_y);
     }
 
@@ -668,7 +665,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         // Insert at new position
         let children = this._controls.get_children();
-        let insert_at = target_index * 2; // *2 por causa dos separadores
+        let insert_at = target_index * 2; // *2 because of separators
 
         if (insert_at >= children.length) {
             this._controls.add_child(divide);
@@ -704,7 +701,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         this._insert_tab_at_position(tab, target_index);
 
-        // Atualiza a ordem salva baseada na posição final
+        // Update saved order based on final position
         this._update_saved_order_from_current_positions();
 
         // Clear drag state
@@ -728,7 +725,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     _insert_tab_at_position(tab, target_index) {
         let divide = tab.get_divide();
         let children = this._controls.get_children();
-        let insert_at = target_index * 2; // *2 por causa dos separadores
+        let insert_at = target_index * 2; // *2 because of separators
 
         if (insert_at >= children.length) {
             this._controls.add_child(divide);
@@ -758,10 +755,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         if (current_index === -1 || current_index === new_index) return;
 
-        // Atualiza a ordem personalizada
+        // Update custom order
         this._update_windows_order(visible_tabs, current_index, new_index);
 
-        // Reordena visualmente
+        // Reorder visually
         this._reorder_tabs_visually();
     }
 
@@ -850,7 +847,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } catch (e) {
         }
     }
-    
+
     _show_hello_world_popup(tab) {
         try {
             Main.notify("Hello World!", "Ctrl+clique detectado na guia! Executando sync...");
