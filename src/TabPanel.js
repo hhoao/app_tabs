@@ -871,8 +871,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
     _on_tab_close_button_clicked(tab) {
         try {
-            this._reset_tab(tab);
+            // Pass
         } catch (error) {
+            Main.notify('Application Tabs', 'Erro ao fechar guia', null);
         }
     }
 
