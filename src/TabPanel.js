@@ -474,7 +474,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             if (event.get_button() === Clutter.BUTTON_PRIMARY) {
                 // Verify if Ctrl is pressed
                 if (event.get_state() & Clutter.ModifierType.CONTROL_MASK) {
-                    this._show_hello_world_popup(tab);
+                    this._focus_app_changed();
                     return Clutter.EVENT_STOP;
                 } else {
                     this._prepare_drag(tab, event);
@@ -848,17 +848,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         }
     }
 
-    _show_hello_world_popup(tab) {
-        try {
-            Main.notify("Hello World!", "Ctrl+clique detectado na guia! Executando sync...");
-
-        } catch (error) {
-            console.log('Hello World! Ctrl+clique detectado na guia! Executando sync...');
-        }
-
-        this._focus_app_changed();
-    }
-
     _find_tab_by_window(window) {
         for (let i = 0; i < this._current_tabs_count; i++) {
             let tab = this._tabs_pool[i];
@@ -873,27 +862,15 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         try {
             // Pass
         } catch (error) {
-            Main.notify('Application Tabs', 'Erro ao fechar guia', null);
+            console.log('Error closing tab:', error);
         }
     }
 
     _on_window_removed(display, window) {
-        // this._show_window_closed_popup(window);
         this._force_update_tabs();
     }
 
     _on_window_closed(display, window) {
         this._force_update_tabs();
-    }
-
-    _show_window_closed_popup(window) {
-        try {
-            let window_title = window ? window.get_title() : 'Desconhecida';
-            let message = `Janela fechada: ${window_title}`;
-
-            Main.notify('Application Tabs', message, null);
-        } catch (e) {
-            Main.notify('Application Tabs', 'Janela fechada', null);
-        }
     }
 });
