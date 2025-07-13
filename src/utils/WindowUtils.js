@@ -45,7 +45,7 @@ function parseHexIpAndPort(hexString) {
 
     let port = parseInt(portHex, 16);
 
-    return {ip, port};
+    return { ip, port };
 }
 
 function parseNetworkInfo(pid, filename) {

@@ -47,5 +47,8 @@
 }"
             </default>
         </key>
+        <key name="tabs-order" type="s">
+            <default>"{}"</default>
+        </key>
     </schema>
 </schemalist>
