@@ -1,5 +1,7 @@
 # App Tabs
 
+![](https://github.com/hhoao/app_tabs/main/assets/img.png)
+
 ## Overview
 
 **AppTabs** is a Gnome extension that allows your panel to include tabs for different windows of launched applications.
@@ -60,6 +62,8 @@ gnome-extensions prefs huanghaohhoa@163.com
 1. You can see the application window intuitively.
 2. Click tab to jump to the corresponding window immediately or hide window for active tab.
 3. Click the Close button to close the window.
+4. Right click tab to show window function menu.
+5. Support drag and drop to rearrange the order of tabs.
 
 If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.
 
