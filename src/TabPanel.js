@@ -52,7 +52,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         // Detect when GNOME Shell is initialized/restarted
         // Use timeout to execute sync after complete initialization
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
+        this._init_timeout_id= GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
             this._on_shell_startup();
             return GLib.SOURCE_REMOVE;
         });
@@ -166,7 +166,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         for (let i = 0; i < this._current_tabs_count; i++) {
             this._tabs_pool[i].on_active(window);
         }
-    } destroy() {
+    }
+
+    destroy() {
+        if (this._init_timeout_id) {
+            GLib.Source.remove(this._init_timeout_id);
+            this._init_timeout_id = null;
+        }
         this._cancel_drag_preparation();
 
         // Clear global drag events if still active
