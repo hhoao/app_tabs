@@ -46,8 +46,20 @@ You can configure app tab style like this on preferences, and the style use the 
 ## DEBUG
 Gnome Shell:
 ```bash
+journalctl -f -o cat /usr/bin/gnome-shell
+```
+For gnome shell 48:
+```bash
 export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
 dbus-run-session -- gnome-shell --nested --wayland
+```
+For gnome shell 49:
+```bash
+export G_MESSAGES_DEBUG=all
+export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
+export SHELL_DEBUG=all
+command -V mutter-devkit || sudo apt install mutter-dev-bin
+dbus-run-session -- gnome-shell --devki
 ```
 ```bash
 glib-compile-schemas schemas/
