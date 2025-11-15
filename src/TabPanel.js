@@ -497,6 +497,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             return Clutter.EVENT_PROPAGATE;
         });
 
+        // 监听 clicked 事件，如果只是点击（没有拖动），则取消拖动准备
+        tab.connect('clicked', () => {
+            // 如果还没有开始拖动，说明这只是点击，取消拖动准备
+            if (this._drag_prepared && this._drag_prepared_tab === tab && !this._dragging_tab) {
+                this._cancel_drag_preparation();
+            }
+        });
+
         tab.connect('motion-event', (actor, event) => {
             if (this._drag_prepared && this._drag_prepared_tab === tab) {
                 this._check_drag_threshold(tab, event);
@@ -512,7 +520,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._drag_prepared = true;
         this._drag_prepared_tab = tab;
         this._drag_start_position = event.get_coords();
-        this._drag_threshold = 5; // 5px of threshold
+        this._drag_threshold = 10; // 10px of threshold to prevent accidental drags on click
     }
 
     _check_drag_threshold(tab, event) {
