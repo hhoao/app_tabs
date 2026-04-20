@@ -318,6 +318,7 @@ export const AppTab = GObject.registerClass({
         const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
         pinToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
             if (win.is_above()) {
                 win.unmake_above();
             } else {
@@ -331,6 +332,7 @@ export const AppTab = GObject.registerClass({
         const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Decorate');
         decorateToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
             const winId = parseInt(win.get_description(), 16);
             if (isNaN(winId)) return Clutter.EVENT_PROPAGATE;
             try {
