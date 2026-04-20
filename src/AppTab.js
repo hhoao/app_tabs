@@ -332,6 +332,7 @@ export const AppTab = GObject.registerClass({
         decorateToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             const winId = parseInt(win.get_description(), 16);
+            if (isNaN(winId)) return Clutter.EVENT_PROPAGATE;
             try {
                 if (win.decorated) {
                     GLib.spawn_command_line_sync(
