@@ -315,20 +315,38 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(unMaximizeMenuItem);
 
-        const pinMenuItem = new PopupMenu.PopupMenuItem('Pin');
-        pinMenuItem.connect('activate', () => {
-            this.get_current_window().activate(0);
-            this.get_current_window().make_above();
+        const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
+        pinToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            if (win.is_above()) {
+                win.unmake_above();
+            } else {
+                win.activate(0);
+                win.make_above();
+            }
             return Clutter.EVENT_PROPAGATE;
         });
-        this._menu.addMenuItem(pinMenuItem);
+        this._menu.addMenuItem(pinToggleMenuItem);
 
-        const unPinMenuItem = new PopupMenu.PopupMenuItem('UnPin');
-        unPinMenuItem.connect('activate', () => {
-            this.get_current_window().unmake_above();
+        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Decorate');
+        decorateToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            const winId = parseInt(win.get_description(), 16);
+            if (isNaN(winId)) return Clutter.EVENT_PROPAGATE;
+            try {
+                if (win.decorated) {
+                    GLib.spawn_command_line_sync(
+                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"`
+                    );
+                } else {
+                    GLib.spawn_command_line_sync(
+                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x1, 0x0, 0x0"`
+                    );
+                }
+            } catch (_e) { /* Wayland native windows: silently ignore */ }
             return Clutter.EVENT_PROPAGATE;
         });
-        this._menu.addMenuItem(unPinMenuItem);
+        this._menu.addMenuItem(decorateToggleMenuItem);
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -377,6 +395,13 @@ export const AppTab = GObject.registerClass({
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(forceKillMenuItem);
+        this._menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen) return;
+            const win = this.get_current_window();
+            if (!win) return;
+            pinToggleMenuItem.label.set_text(win.is_above() ? 'Unpin' : 'Pin');
+            decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
+        });
         this._menu_manager.addMenu(this._menu);
 
     }

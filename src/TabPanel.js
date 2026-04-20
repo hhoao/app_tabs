@@ -10,6 +10,7 @@ import { AppTab } from './AppTab.js';
 import Clutter from 'gi://Clutter';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { shouldStartPreparedDrag } from './utils/DragPreparation.js';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -183,6 +184,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._stage_release_id) {
             global.stage.disconnect(this._stage_release_id);
             this._stage_release_id = null;
+        }
+        if (this._drag_prepare_stage_release_id) {
+            global.stage.disconnect(this._drag_prepare_stage_release_id);
+            this._drag_prepare_stage_release_id = null;
         }
 
         // Clear placeholder if it still exists
@@ -521,30 +526,40 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._drag_prepared_tab = tab;
         this._drag_start_position = event.get_coords();
         this._drag_threshold = 10; // 10px of threshold to prevent accidental drags on click
+        this._drag_prepare_stage_release_id = global.stage.connect(
+            'button-release-event',
+            this._on_prepared_drag_stage_release.bind(this));
     }
 
     _check_drag_threshold(tab, event) {
         if (!this._drag_prepared) return;
 
-        let [current_x, current_y] = event.get_coords();
-        let [start_x, start_y] = this._drag_start_position;
-
-        let distance = Math.sqrt(
-            Math.pow(current_x - start_x, 2) +
-            Math.pow(current_y - start_y, 2)
-        );
-
-        if (distance >= this._drag_threshold) {
+        if (shouldStartPreparedDrag({
+            startCoords: this._drag_start_position,
+            currentCoords: event.get_coords(),
+            threshold: this._drag_threshold,
+            eventState: event.get_state(),
+            primaryButtonMask: Clutter.ModifierType.BUTTON1_MASK,
+        })) {
             this._cancel_drag_preparation();
             this._start_drag(tab);
         }
     }
 
     _cancel_drag_preparation() {
+        if (this._drag_prepare_stage_release_id) {
+            global.stage.disconnect(this._drag_prepare_stage_release_id);
+            this._drag_prepare_stage_release_id = null;
+        }
         this._drag_prepared = false;
         this._drag_prepared_tab = null;
         this._drag_start_position = null;
         this._drag_threshold = null;
+    }
+
+    _on_prepared_drag_stage_release() {
+        this._cancel_drag_preparation();
+        return Clutter.EVENT_PROPAGATE;
     }
 
     _start_drag(tab) {
