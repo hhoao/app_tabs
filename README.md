@@ -59,7 +59,7 @@ export G_MESSAGES_DEBUG=all
 export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
 export SHELL_DEBUG=all
 command -V mutter-devkit || sudo apt install mutter-dev-bin
-dbus-run-session -- gnome-shell --devki
+dbus-run-session gnome-shell --devkit --wayland
 ```
 ```bash
 glib-compile-schemas schemas/
