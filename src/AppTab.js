@@ -395,6 +395,13 @@ export const AppTab = GObject.registerClass({
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(forceKillMenuItem);
+        this._menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen) return;
+            const win = this.get_current_window();
+            if (!win) return;
+            pinToggleMenuItem.label.set_text(win.is_above() ? 'UnPin' : 'Pin');
+            decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
+        });
         this._menu_manager.addMenu(this._menu);
 
     }
