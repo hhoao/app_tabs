@@ -328,6 +328,25 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(pinToggleMenuItem);
 
+        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Undecorate');
+        decorateToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            const winId = parseInt(win.get_description(), 16);
+            try {
+                if (win.decorated) {
+                    GLib.spawn_command_line_sync(
+                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"`
+                    );
+                } else {
+                    GLib.spawn_command_line_sync(
+                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x1, 0x0, 0x0"`
+                    );
+                }
+            } catch (_e) { /* Wayland native windows: silently ignore */ }
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(decorateToggleMenuItem);
+
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         const moveLeftMenuItem = new PopupMenu.PopupMenuItem('Move Left ←');
