@@ -328,7 +328,7 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(pinToggleMenuItem);
 
-        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Undecorate');
+        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Decorate');
         decorateToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             const winId = parseInt(win.get_description(), 16);
@@ -399,7 +399,7 @@ export const AppTab = GObject.registerClass({
             if (!isOpen) return;
             const win = this.get_current_window();
             if (!win) return;
-            pinToggleMenuItem.label.set_text(win.is_above() ? 'UnPin' : 'Pin');
+            pinToggleMenuItem.label.set_text(win.is_above() ? 'Unpin' : 'Pin');
             decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
         });
         this._menu_manager.addMenu(this._menu);
