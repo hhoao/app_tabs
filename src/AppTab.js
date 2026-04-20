@@ -315,20 +315,18 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(unMaximizeMenuItem);
 
-        const pinMenuItem = new PopupMenu.PopupMenuItem('Pin');
-        pinMenuItem.connect('activate', () => {
-            this.get_current_window().activate(0);
-            this.get_current_window().make_above();
+        const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
+        pinToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            if (win.is_above()) {
+                win.unmake_above();
+            } else {
+                win.activate(0);
+                win.make_above();
+            }
             return Clutter.EVENT_PROPAGATE;
         });
-        this._menu.addMenuItem(pinMenuItem);
-
-        const unPinMenuItem = new PopupMenu.PopupMenuItem('UnPin');
-        unPinMenuItem.connect('activate', () => {
-            this.get_current_window().unmake_above();
-            return Clutter.EVENT_PROPAGATE;
-        });
-        this._menu.addMenuItem(unPinMenuItem);
+        this._menu.addMenuItem(pinToggleMenuItem);
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
