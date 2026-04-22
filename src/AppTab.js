@@ -8,7 +8,6 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import GLib from 'gi://GLib';
 import * as WindowUtils from './utils/WindowUtils.js';
-import Meta from 'gi://Meta';
 import * as StringUtils from './utils/StringUtils.js';
 import Gio from "gi://Gio";
 import { getExtensionObject } from "../extension.js";
@@ -303,14 +302,14 @@ export const AppTab = GObject.registerClass({
         const maximizeMenuItem = new PopupMenu.PopupMenuItem('Maximize');
         maximizeMenuItem.connect('activate', () => {
             this.get_current_window().activate(0);
-            this.get_current_window().maximize(Meta.MaximizeFlags.BOTH);
+            this.get_current_window().maximize();
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(maximizeMenuItem);
 
         const unMaximizeMenuItem = new PopupMenu.PopupMenuItem('UnMaximize');
         unMaximizeMenuItem.connect('activate', () => {
-            this.get_current_window().unmaximize(Meta.MaximizeFlags.BOTH);
+            this.get_current_window().unmaximize();
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(unMaximizeMenuItem);
