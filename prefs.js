@@ -5,6 +5,143 @@ import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/ex
 import {SchemaKeyConstants} from './src/config/SchemaKeyConstants.js';
 
 export default class ApplicationTabPreferences extends ExtensionPreferences {
+    open_uri(uri) {
+        try {
+            Gio.AppInfo.launch_default_for_uri(uri, null);
+        } catch (e) {
+            console.error(`[AppTabs] Failed to open uri ${uri}: ${e}`);
+        }
+    }
+
+    get_about_header_group() {
+        const group = new Adw.PreferencesGroup();
+        const extensionName = this.metadata?.name ?? 'Application Tabs Dev';
+        const iconPath = `${this.path}/assets/icon.svg`;
+        const card = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            spacing: 10,
+            margin_top: 20,
+            margin_bottom: 20,
+            margin_start: 20,
+            margin_end: 20,
+            halign: Gtk.Align.CENTER,
+        });
+
+        const icon = new Gtk.Image({
+            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(iconPath) }),
+            pixel_size: 72,
+            halign: Gtk.Align.CENTER,
+        });
+        const title = new Gtk.Label({
+            label: extensionName,
+            halign: Gtk.Align.CENTER,
+            css_classes: ['title-1'],
+        });
+        const maintainer = new Gtk.Label({
+            label: '由 hhoao 维护',
+            halign: Gtk.Align.CENTER,
+            css_classes: ['dim-label'],
+        });
+
+        card.append(icon);
+        card.append(title);
+        card.append(maintainer);
+        group.add(card);
+        return group;
+    }
+
+    get_about_meta_group() {
+        const group = new Adw.PreferencesGroup();
+        const versionValue = this.metadata?.version?.toString?.() ?? '开发版本';
+
+        const versionRow = new Adw.ActionRow({
+            title: '版本',
+        });
+        const versionLabel = new Gtk.Label({
+            label: versionValue,
+            valign: Gtk.Align.CENTER,
+        });
+        versionRow.add_suffix(versionLabel);
+        group.add(versionRow);
+
+        const releaseNote = new Adw.ExpanderRow({
+            title: '发行说明',
+        });
+        const releaseText = new Adw.ActionRow({
+            title: '当前版本',
+            subtitle: '应用标签体验优化，新增独立关于页与外链入口。',
+        });
+        releaseNote.add_row(releaseText);
+        group.add(releaseNote);
+        return group;
+    }
+
+    get_about_links_group() {
+        const group = new Adw.PreferencesGroup();
+        const url = this.metadata?.url ?? '';
+
+        const siteRow = this.create_external_link_row(
+            '扩展页面',
+            'Application Tabs',
+            'https://extensions.gnome.org/extension/6254/application-tabs/',
+        );
+        group.add(siteRow);
+
+        const sourceRow = this.create_external_link_row(
+            '源代码✨',
+            'GitHub',
+            url || 'https://github.com/',
+        );
+        group.add(sourceRow);
+
+        const issueRow = this.create_external_link_row(
+            '报告问题',
+            'Issues',
+            url ? `${url}/issues` : 'https://github.com/',
+        );
+        group.add(issueRow);
+
+        const contributorRow = this.create_external_link_row(
+            '贡献者',
+            'Contributors',
+            'https://github.com/hhoao/app_tabs/graphs/contributors',
+        );
+        group.add(contributorRow);
+
+        return group;
+    }
+
+    create_external_link_row(title, label, uri) {
+        const row = new Adw.ActionRow({
+            title,
+            activatable: true,
+        });
+        const linkButton = new Gtk.LinkButton({
+            uri,
+            label,
+            valign: Gtk.Align.CENTER,
+        });
+        const externalIcon = new Gtk.Image({
+            icon_name: 'adw-external-link-symbolic',
+            valign: Gtk.Align.CENTER,
+        });
+        row.add_suffix(linkButton);
+        row.add_suffix(externalIcon);
+        row.activatable_widget = linkButton;
+        return row;
+    }
+
+    get_about_page() {
+        const page = new Adw.PreferencesPage({
+            title: '关于',
+            icon_name: 'help-about-symbolic',
+        });
+        page.add(this.get_about_header_group());
+        page.add(this.get_about_meta_group());
+        page.add(this.get_about_links_group());
+        return page;
+    }
+
     get_spin_button= (settings, key_name) => {
         const spin = new Gtk.SpinButton({
             valign: Gtk.Align.CENTER,
@@ -90,7 +227,7 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
     };
     get_text_view_wrapper(settings, key_name) {
         const scrolled_window = new Gtk.ScrolledWindow();
-        scrolled_window.set_max_content_height(300);
+        scrolled_window.set_max_content_height(400);
         scrolled_window.set_min_content_height(100);
         scrolled_window.set_vadjustment(Gtk.Adjustment.new(0, 0, 1000, 10, 0, 0));
         const app_tab_config_text_view = new Gtk.TextView({
@@ -174,6 +311,7 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         page.add(appearance_group);
         page.add(app_tab_config_group);
         window.add(page);
+        window.add(this.get_about_page());
     }
 }
 
