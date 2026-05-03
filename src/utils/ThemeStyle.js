@@ -1,5 +1,6 @@
 const MIN_TAB_HEIGHT = 20;
 const PANEL_VERTICAL_PADDING = 10;
+const TAB_BORDER_RADIUS = 8;
 const LEGACY_DEFAULT_STYLE = {
     'margin': '4px 0',
     'border-radius': '8px',
@@ -59,7 +60,7 @@ function getAdaptiveTabStyle(isDarkMode, isActive, isHover, panelHeight) {
     let minHeight = Math.max(MIN_TAB_HEIGHT, panelHeight - PANEL_VERTICAL_PADDING);
     let style = {
         'margin': '0 2px',
-        'border-radius': '8px',
+        'border-radius': `${TAB_BORDER_RADIUS}px`,
         'color': isDarkMode ? '#ffffff' : '#242424',
         'min-height': `${minHeight}px`,
         'transition-duration': '0.2s',
@@ -141,12 +142,13 @@ export function buildDividerStyle(isDarkMode, panelHeight = MIN_TAB_HEIGHT + PAN
         ? 'rgba(255, 255, 255, 0.24)'
         : 'rgba(0, 0, 0, 0.18)';
     let minHeight = Math.max(MIN_TAB_HEIGHT, panelHeight - PANEL_VERTICAL_PADDING);
-    let verticalMargin = Math.max(3, Math.floor((panelHeight - minHeight) / 2));
+    let dividerHeight = Math.max(1, minHeight - (TAB_BORDER_RADIUS * 2));
+    let verticalMargin = Math.max(3, Math.floor((panelHeight - dividerHeight) / 2));
 
     return styleObjectToString({
-        'height': `${minHeight}px`,
-        'min-height': `${minHeight}px`,
-        'max-height': `${minHeight}px`,
+        'height': `${dividerHeight}px`,
+        'min-height': `${dividerHeight}px`,
+        'max-height': `${dividerHeight}px`,
         'margin-top': `${verticalMargin}px`,
         'margin-bottom': `${verticalMargin}px`,
         'background-color': background,
