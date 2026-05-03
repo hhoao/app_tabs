@@ -5,7 +5,7 @@
 .app-tabs-scroll-view {}
 
 .app-tabs-box {
-    margin: 2px;
+    margin: 0 2px;
 }
 
 .app-tab {
@@ -20,15 +20,6 @@
 
 .vertical-line {
     width: 2px;
-    margin-top: 7px;
-    margin-bottom: 7px;
-    background-color: #4b4b4b;
-}
-
-.app-tab:hover {
-    background-color: #393939;
-    transition-duration: 0.3s;
-    transition-property: background-color;
 }
 
 .app-tab-label {
@@ -37,16 +28,11 @@
 }
 
 .app-tab-close-button {
-    padding-left: 6px;
-    padding-right: 6px;
-    border-radius: 16px;
-    width: 10px;
+    padding: 0;
 }
 
-.app-tab-close-button:hover {
-    background-color: #2d2d2d;
-    transition-duration: 0.3s;
-    transition-property: background-color;
+.app-tabs-add-button {
+    margin: 4px 0 4px 6px;
 }
 
 /* Estilos para drag & drop */

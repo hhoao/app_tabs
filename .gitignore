@@ -1,3 +1,4 @@
 .idea/
 .worktrees/
 schemas/gschemas.compiled
+venv

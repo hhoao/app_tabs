@@ -17,7 +17,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gjs libglib2.0-bin
+      - name: Check
+        run: bash scripts/check.sh
       - name: Release drafter
         id: release_drafter
         uses: release-drafter/release-drafter@v5
@@ -33,7 +39,7 @@ jobs:
           echo "version=app_tabs_${{ steps.release_drafter.outputs.name }}_${datetime}" >> "$GITHUB_OUTPUT";
       - name: Package
         run: |
-          bash ./package.sh ${{ steps.generate_datetime_and_version.outputs.version }};
+          bash scripts/package.sh ${{ steps.generate_datetime_and_version.outputs.version }};
       - name: Upload assert
         id: release_upload
         uses: shogo82148/actions-upload-release-asset@v1

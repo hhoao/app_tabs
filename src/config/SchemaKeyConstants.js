@@ -4,5 +4,6 @@ export const SchemaKeyConstants = {
     ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE: "only-display-tabs-on-current-workspace",
     APP_TAB_CONFIG: "app-tab-config",
     GTK_THEME: "gtk-theme",
+    COLOR_SCHEME: "color-scheme",
     TABS_ORDER: "tabs-order",
 }

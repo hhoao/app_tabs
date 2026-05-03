@@ -7,10 +7,12 @@ import Gio from 'gi://Gio';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { AppTab } from './AppTab.js';
+import { TabControls } from './TabControls.js';
 import Clutter from 'gi://Clutter';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { shouldStartPreparedDrag } from './utils/DragPreparation.js';
+import { isDarkTheme } from './utils/ThemeStyle.js';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -37,8 +39,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
 
-        this._controls = new St.BoxLayout({ style_class: 'app-tabs-box' });
-        this._scroll_view.add_child(this._controls);
+        this._tab_controls = new TabControls({
+            isDarkMode: this._is_dark_mode(),
+            panelHeight: this._get_panel_height(),
+            onAddTab: this._open_new_tab_for_target_app.bind(this),
+        });
+        this._scroll_view.add_child(this._tab_controls.actor);
         this.add_child(this._scroll_view);
         this._init_pool_tabs();
 
@@ -50,6 +56,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         global.window_manager.connectObject('switch-workspace',
             this._on_workspace_switched.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this);
+        Main.panel.connectObject(
+            'notify::height', this._on_panel_height_changed.bind(this),
+            'style-changed', this._on_panel_height_changed.bind(this),
+            this);
 
         // Detect when GNOME Shell is initialized/restarted
         // Use timeout to execute sync after complete initialization
@@ -94,6 +104,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._on_theme_changed.bind(this),
             this,
         );
+        if (this._desktop_setting_has_key(SchemaKeyConstants.COLOR_SCHEME)) {
+            this._desktop_settings.connectObject(
+                this.get_changed_key(SchemaKeyConstants.COLOR_SCHEME),
+                this._on_theme_changed.bind(this),
+                this,
+            );
+        }
     }
 
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
@@ -110,6 +127,32 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } else {
             this._scroll_view.set_style('');
         }
+    }
+
+    _desktop_setting_has_key(key) {
+        return this._desktop_settings.settings_schema?.has_key(key) ?? false;
+    }
+
+    _get_desktop_setting_string(key) {
+        if (!this._desktop_setting_has_key(key))
+            return '';
+
+        return this._desktop_settings.get_string(key);
+    }
+
+    _get_theme_state() {
+        return {
+            gtkTheme: this._get_desktop_setting_string(SchemaKeyConstants.GTK_THEME),
+            colorScheme: this._get_desktop_setting_string(SchemaKeyConstants.COLOR_SCHEME),
+        };
+    }
+
+    _is_dark_mode() {
+        return isDarkTheme(this._get_theme_state());
+    }
+
+    _get_panel_height() {
+        return Main.panel.get_height?.() ?? Main.panel.height ?? 30;
     }
 
     get_horizontal_scroll_view() {
@@ -137,15 +180,38 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _on_theme_changed(settings, key) {
+        let themeState = this._get_theme_state();
         for (let tab of this._tabs_pool) {
-            tab.set_theme(settings.get_string(key));
+            tab.set_theme(themeState);
         }
+        this._tab_controls.set_theme({
+            isDarkMode: this._is_dark_mode(),
+            panelHeight: this._get_panel_height(),
+        });
+    }
+
+    _on_panel_height_changed() {
+        let panelHeight = this._get_panel_height();
+        for (let tab of this._tabs_pool) {
+            tab.set_panel_height(panelHeight);
+        }
+        this._tab_controls.set_theme({
+            isDarkMode: this._is_dark_mode(),
+            panelHeight,
+        });
     }
 
     _on_app_tab_config_changed(settings, key) {
         for (let tab of this._tabs_pool) {
             tab.set_app_tab_config(JSON.parse(this._settings.get_string(key)));
         }
+    }
+
+    _open_new_tab_for_target_app() {
+        if (!this._target_app?.can_open_new_window?.())
+            return;
+
+        this._target_app.open_new_window(-1);
     }
 
     _on_ellipsize_mode_changed(settings, mode) {
@@ -155,9 +221,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     on_focus_window_changed(param) {
-        if (param.focus_window != null) {
-            this.active_window_tab(param.focus_window);
-        }
+        this.active_window_tab(param.focus_window);
     }
 
     /**
@@ -167,6 +231,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         for (let i = 0; i < this._current_tabs_count; i++) {
             this._tabs_pool[i].on_active(window);
         }
+        this._tab_controls.refresh_active_state();
     }
 
     destroy() {
@@ -190,11 +255,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._drag_prepare_stage_release_id = null;
         }
 
-        // Clear placeholder if it still exists
-        if (this._drag_placeholder && this._drag_placeholder.get_parent()) {
-            this._drag_placeholder.get_parent().remove_child(this._drag_placeholder);
-            this._drag_placeholder = null;
-        }
+        this._tab_controls.clear_drag_placeholder();
+        this._drag_placeholder = null;
 
         this._scroll_view?.disconnectObject(this);
         this._desktop_settings?.disconnectObject(this);
@@ -204,11 +266,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         global.window_manager?.disconnectObject(this);
         Shell.WindowTracker?.get_default().disconnectObject(this);
         Shell.AppSystem.get_default()?.disconnectObject(this);
+        Main.panel?.disconnectObject(this);
         Main.layoutManager?.disconnectObject(this);
         for (let tab of this._tabs_pool) {
             tab.destroy();
         }
-        this._controls.destroy();
+        this._tab_controls.destroy();
         this._scroll_view.destroy();
 
         this._menu_manager = null;
@@ -219,7 +282,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._current_tabs_count = null;
         this._target_app = null;
         this._update_windows_later_id = null;
-        this._controls = null;
+        this._tab_controls = null;
         super.destroy();
     }
 
@@ -240,20 +303,17 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
     _add_pool_tabs(count) {
         for (let i = 0; i < count; i++) {
-            let divide = new St.Label();
-            divide.add_style_class_name('vertical-line');
-            divide.hide();
-
             let app_tab = new AppTab({
                 style_config: JSON.parse(this._settings.get_string(SchemaKeyConstants.APP_TAB_CONFIG)),
-                is_dark_mode: this._desktop_settings.get_string(SchemaKeyConstants.GTK_THEME),
+                is_dark_mode: this._is_dark_mode(),
+                panel_height: this._get_panel_height(),
                 settings: this._settings,
                 menu_manager: this._menu_manager,
             });
-            app_tab.set_divide(divide);
+            app_tab.connect('active-state-changed', () => {
+                this._tab_controls.refresh_active_state();
+            });
             app_tab.hide();
-            this._controls.add_child(divide);
-            this._controls.add_child(app_tab);
             this._tabs_pool.push(app_tab);
         }
     }
@@ -402,8 +462,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         currentWindow?.disconnectObject(tab);
         tab.set_current_window(null);
         this._current_tabs_count--;
-        this._controls.set_child_above_sibling(tab, null);
-        this._controls.set_child_above_sibling(tab.get_divide(), null);
+        this._tab_controls.remove_tab(tab);
         this._tabs_pool.splice(this._tabs_pool.indexOf(tab), 1);
         this._tabs_pool.push(tab);
     }
@@ -438,6 +497,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 this._on_tab_close_button_clicked(tab);
             });
 
+            tab.connect('close-other-tabs', () => {
+                this._close_other_tabs(tab);
+            });
+
+            tab.connect('close-tabs-to-the-right', () => {
+                this._close_tabs_to_the_right_of(tab);
+            });
+
             // Detect when window is closed
             window.connectObject('unmanaged', () => {
                 let corresponding_tab = this._find_tab_by_window(window);
@@ -466,7 +533,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             }, this);
 
             this._current_tabs_count++;
+            this._tab_controls.add_tab(tab);
         });
+        this._tab_controls.refresh_active_state();
     }
 
     _sort_windows_by_custom_order(windows) {
@@ -590,12 +659,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         tab.opacity = 255;
 
-        // Remove tab from original position temporarily
-        let divide = tab.get_divide();
-        this._original_tab_parent = this._controls;
-        this._original_tab_index = this._controls.get_children().indexOf(tab);
-        this._original_divide_index = this._controls.get_children().indexOf(divide);
-
         this._create_placeholder(tab);
     }
 
@@ -606,12 +669,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             style_class: 'app-tab-placeholder'
         });
 
-        let tab_index = this._controls.get_children().indexOf(tab);
-        this._controls.insert_child_at_index(this._drag_placeholder, tab_index);
+        let tab_index = this._get_tab_index(tab);
+        this._tab_controls.begin_drag(tab, this._drag_placeholder, tab_index);
 
         // Move tab to Main.uiGroup so it can float over everything
-        this._controls.remove_child(tab);
-        this._controls.remove_child(tab.get_divide());
         Main.uiGroup.add_child(tab);
 
         // Calculate initial position based on current cursor
@@ -655,21 +716,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _update_placeholder_position(target_index) {
-        if (!this._drag_placeholder) return;
-
-        let current_index = this._controls.get_children().indexOf(this._drag_placeholder);
-        let desired_index = target_index * 2; // x2 because of separators
-
-        if (Math.floor(current_index / 2) !== target_index) {
-            this._controls.remove_child(this._drag_placeholder);
-
-            let children = this._controls.get_children();
-            if (desired_index >= children.length) {
-                this._controls.add_child(this._drag_placeholder);
-            } else {
-                this._controls.insert_child_at_index(this._drag_placeholder, desired_index);
-            }
-        }
+        this._tab_controls.move_drag_placeholder(target_index);
     }
 
     _find_closest_tab_index(x, visible_tabs) {
@@ -686,23 +733,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _move_tab_to_position(tab, target_index) {
-        let divide = tab.get_divide();
-
-        // Remove from current position
-        this._controls.remove_child(divide);
-        this._controls.remove_child(tab);
-
-        // Insert at new position
-        let children = this._controls.get_children();
-        let insert_at = target_index * 2; // *2 because of separators
-
-        if (insert_at >= children.length) {
-            this._controls.add_child(divide);
-            this._controls.add_child(tab);
-        } else {
-            this._controls.insert_child_at_index(divide, insert_at);
-            this._controls.insert_child_at_index(tab, insert_at + 1);
-        }
+        this._tab_controls.move_tab(tab, target_index);
     }
 
     _get_tab_index(tab) {
@@ -719,16 +750,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         Main.uiGroup.remove_child(tab);
 
         // Find where to insert the tab based on the placeholder position
-        let placeholder_index = this._controls.get_children().indexOf(this._drag_placeholder);
-        let target_index = Math.floor(placeholder_index / 2);
+        let target_index = this._tab_controls.get_drag_placeholder_index();
 
-        // Remove placeholder
-        if (this._drag_placeholder) {
-            this._controls.remove_child(this._drag_placeholder);
-            this._drag_placeholder = null;
-        }
-
-        this._insert_tab_at_position(tab, target_index);
+        this._tab_controls.end_drag(tab, target_index);
+        this._drag_placeholder = null;
 
         // Update saved order based on final position
         this._update_saved_order_from_current_positions();
@@ -752,18 +777,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _insert_tab_at_position(tab, target_index) {
-        let divide = tab.get_divide();
-        let children = this._controls.get_children();
-        let insert_at = target_index * 2; // *2 because of separators
-
-        if (insert_at >= children.length) {
-            this._controls.add_child(divide);
-            this._controls.add_child(tab);
-        } else {
-            this._controls.insert_child_at_index(divide, insert_at);
-            this._controls.insert_child_at_index(tab, insert_at + 1);
-        }
-
+        this._tab_controls.move_tab(tab, target_index);
         tab.set_position(0, 0);
     }
 
@@ -792,9 +806,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _get_visible_tabs() {
-        return this._controls.get_children().filter(child =>
-            child instanceof AppTab && child.visible
-        );
+        return this._tab_controls.get_tabs();
     }
 
     _update_windows_order(visible_tabs, from_index, to_index) {
@@ -814,13 +826,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     _reorder_tabs_visually() {
         let visible_tabs = this._get_visible_tabs();
 
-        // Remove tab from container
-        visible_tabs.forEach(tab => {
-            let divide = tab.get_divide();
-            this._controls.remove_child(divide);
-            this._controls.remove_child(tab);
-        });
-
         // Sort by custom order
         let sorted_tabs = visible_tabs.slice().sort((a, b) => {
             let window_a = a.get_current_window();
@@ -830,12 +835,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             return order_a - order_b;
         });
 
-        // Add again in sorted order
-        sorted_tabs.forEach(tab => {
-            let divide = tab.get_divide();
-            this._controls.add_child(divide);
-            this._controls.add_child(tab);
-        });
+        this._tab_controls.set_tabs(sorted_tabs);
     }
 
     _move_tab_by_direction(tab, direction) {
@@ -850,6 +850,37 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (new_index !== current_index) {
             this._reorder_tab(tab, new_index);
         }
+    }
+
+    _close_other_tabs(triggerTab) {
+        let visible_tabs = this._get_visible_tabs();
+        let time = global.get_current_time();
+        let toClose = [];
+        for (let t of visible_tabs) {
+            if (t === triggerTab)
+                continue;
+            let win = t.get_current_window();
+            if (win?.can_close())
+                toClose.push(win);
+        }
+        for (let win of toClose)
+            win.delete(time);
+    }
+
+    _close_tabs_to_the_right_of(triggerTab) {
+        let visible_tabs = this._get_visible_tabs();
+        let idx = visible_tabs.indexOf(triggerTab);
+        if (idx === -1)
+            return;
+        let time = global.get_current_time();
+        let toClose = [];
+        for (let i = idx + 1; i < visible_tabs.length; i++) {
+            let win = visible_tabs[i].get_current_window();
+            if (win?.can_close())
+                toClose.push(win);
+        }
+        for (let win of toClose)
+            win.delete(time);
     }
 
     _load_saved_tabs_order() {

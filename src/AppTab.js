@@ -6,16 +6,21 @@ import Pango from 'gi://Pango';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import * as WindowUtils from './utils/WindowUtils.js';
-import * as StringUtils from './utils/StringUtils.js';
-import Gio from "gi://Gio";
-import { getExtensionObject } from "../extension.js";
+import {
+    buildCloseButtonStyle,
+    buildTabStyle,
+    isDarkTheme,
+} from './utils/ThemeStyle.js';
 
 export const AppTab = GObject.registerClass({
     Signals: {
         'move-tab': { param_types: [GObject.TYPE_INT] },
         'close-tab': {},
+        'close-other-tabs': {},
+        'close-tabs-to-the-right': {},
+        'active-state-changed': {},
     },
 }, class AppTab extends St.Button {
     _init(props) {
@@ -27,10 +32,13 @@ export const AppTab = GObject.registerClass({
         this._menu_manager = props.menu_manager;
         this._settings = props.settings;
         this._is_dark_mode = props.is_dark_mode;
+        this._panel_height = props.panel_height;
         this._style_config = props.style_config;
+        this._is_active = false;
+        this._is_hover = false;
+        this._is_close_hover = false;
         // Meta.Window
         this._current_window = null;
-        this._divide = null;
         this.add_style_class_name('app-tab');
 
         this._init_controls();
@@ -46,80 +54,85 @@ export const AppTab = GObject.registerClass({
             }
             return Clutter.EVENT_PROPAGATE;
         });
+        this.connect('notify::hover', () => {
+            this._is_hover = this.hover;
+            this._apply_tab_style();
+        });
         this.connect('clicked', () => {
             if (this.get_current_window() != null) {
                 if (!this.get_current_window().has_focus()) {
                     this.get_current_window().activate(0);
                 } else {
                     this.get_current_window().minimize();
-                    this.set_style(this._get_tab_style(false));
+                    this._set_active(false);
                 }
             }
         });
+
+        this._apply_tab_style();
+        this._apply_close_button_style();
     }
 
     set_app_tab_config(config) {
         this._style_config = config;
-        if (Number.parseInt(this._style_config['icon-size']) !== this._icon.get_icon_size()) {
-            this._icon.set_icon_size(Number.parseInt(this._style_config['icon-size']));
+        let iconSize = Number.parseInt(this._style_config?.['icon-size']);
+        if (!Number.isNaN(iconSize) && iconSize !== this._icon.get_icon_size()) {
+            this._icon.set_icon_size(iconSize);
         }
+        this._apply_tab_style();
     }
 
     on_active(window) {
-        if (this.get_current_window() === window) {
-            this.set_style(this._get_tab_style(true));
-            this.hide_divide();
-        } else {
-            this.set_style(this._get_tab_style());
-            this.show_divide();
-        }
+        this._set_active(this.get_current_window() === window);
     }
 
-    _extract_config_style(style_config, is_active = false, is_hover = false) {
-        let tab_style = { ...style_config.default_style };
-        if (is_hover && style_config.hover_style) {
-            let hover_tab_style = { ...style_config.hover_style };
-            for (let name in hover_tab_style) {
-                tab_style[name] = hover_tab_style[name];
-            }
-        } else if (is_active && style_config.active_style) {
-            let active_tab_style = { ...style_config.active_style };
-            for (let name in active_tab_style) {
-                tab_style[name] = active_tab_style[name];
-            }
-        }
-        return tab_style;
+    _set_active(isActive) {
+        if (this._is_active === isActive)
+            return;
+
+        this._is_active = isActive;
+        this._apply_tab_style();
+        this.emit('active-state-changed');
     }
 
-    _get_tab_style(is_active = false, is_hover = false) {
-        let style = '';
-        let tab_style = {}, mode_tab_style = {};
-        if (this._style_config.default) {
-            tab_style = this._extract_config_style(this._style_config.default, is_active, is_hover);
-        }
-        if (!this._is_dark_mode && this._style_config.light_mode) {
-            mode_tab_style = this._extract_config_style(this._style_config.light_mode, is_active, is_hover);
-        } else if (this._is_dark_mode && this._style_config.dark_mode) {
-            mode_tab_style = this._extract_config_style(this._style_config.dark_mode, is_active, is_hover);
-        }
-        for (let name in mode_tab_style) {
-            tab_style[name] = mode_tab_style[name];
-        }
-        for (let name in tab_style) {
-            style += name + ':' + tab_style[name] + ';';
-        }
-        return style;
+    _get_tab_style() {
+        return buildTabStyle({
+            styleConfig: this._style_config,
+            isDarkMode: this._is_dark_mode,
+            isActive: this._is_active,
+            isHover: this._is_hover,
+            panelHeight: this._panel_height,
+        });
     }
 
-    set_theme(theme) {
-        this._is_dark_mode = theme.includes('dark');
+    _apply_tab_style() {
+        this.set_style(this._get_tab_style());
+    }
+
+    _apply_close_button_style() {
+        this._close_button?.set_style(buildCloseButtonStyle(this._is_dark_mode, this._is_close_hover));
+    }
+
+    _apply_theme_styles() {
+        this._apply_tab_style();
+        this._apply_close_button_style();
+    }
+
+    set_theme(themeState) {
+        this._is_dark_mode = typeof themeState === 'boolean'
+            ? themeState
+            : isDarkTheme(themeState);
+        this._apply_theme_styles();
+    }
+
+    set_panel_height(panelHeight) {
+        this._panel_height = panelHeight;
+        this._apply_tab_style();
     }
 
     _init_close_button() {
         const close_icon = new St.Icon({
-            gicon: Gio.icon_new_for_string(
-                getExtensionObject().path + "/icons/close.svg"
-            ),
+            icon_name: 'window-close-symbolic',
             style_class: "close-icon",
             icon_size: "16",
         });
@@ -135,6 +148,10 @@ export const AppTab = GObject.registerClass({
                 this.get_current_window().delete(global.get_current_time());
                 this.emit('close-tab');
             }
+        });
+        this._close_button.connect('notify::hover', () => {
+            this._is_close_hover = this._close_button.hover;
+            this._apply_close_button_style();
         });
         this._close_button.add_style_class_name('app-tab-close-button');
         this._controls.add_child(this._close_button);
@@ -190,7 +207,6 @@ export const AppTab = GObject.registerClass({
 
     destroy() {
         this._icon.destroy();
-        this._divide.destroy();
         this._label.destroy();
         this._drag_handle.destroy();
         this._close_button.destroy();
@@ -203,7 +219,6 @@ export const AppTab = GObject.registerClass({
         this._style_config = null;
         this._controls = null;
         this._label = null;
-        this._divide = null;
         this._drag_handle = null;
         this._menu = null;
         super.destroy();
@@ -213,28 +228,18 @@ export const AppTab = GObject.registerClass({
         this._icon.set_gicon(gio_icon);
     }
 
-    get_divide() {
-        return this._divide;
-    }
-
-    set_divide(divide) {
-        this._divide = divide;
-    }
-
-    hide_divide() {
-        this._divide.hide();
-    }
-
-    show_divide() {
-        this._divide.show();
-    }
-
     is_active() {
         return this._current_window != null;
     }
 
+    is_focused() {
+        return this._is_active;
+    }
+
     set_current_window(window) {
         this._current_window = window;
+        if (window === null)
+            this._set_active(false);
     }
 
     get_current_window() {
@@ -268,9 +273,6 @@ export const AppTab = GObject.registerClass({
         }
 
         this.hide();
-        if (this._divide) {
-            this._divide.hide();
-        }
         this.remove_all_transitions();
         this.ease({
             opacity: 0,
@@ -292,27 +294,26 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(showMenuItem);
 
-        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Minimize');
+        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Hide');
         minimizeMenuItem.connect('activate', () => {
             this.get_current_window().minimize();
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(minimizeMenuItem);
 
-        const maximizeMenuItem = new PopupMenu.PopupMenuItem('Maximize');
-        maximizeMenuItem.connect('activate', () => {
-            this.get_current_window().activate(0);
-            this.get_current_window().maximize();
+        const maximizeToggleMenuItem = new PopupMenu.PopupMenuItem('Maximize');
+        maximizeToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            if (win.is_maximized())
+                win.unmaximize();
+            else {
+                win.activate(0);
+                win.maximize();
+            }
             return Clutter.EVENT_PROPAGATE;
         });
-        this._menu.addMenuItem(maximizeMenuItem);
-
-        const unMaximizeMenuItem = new PopupMenu.PopupMenuItem('UnMaximize');
-        unMaximizeMenuItem.connect('activate', () => {
-            this.get_current_window().unmaximize();
-            return Clutter.EVENT_PROPAGATE;
-        });
-        this._menu.addMenuItem(unMaximizeMenuItem);
+        this._menu.addMenuItem(maximizeToggleMenuItem);
 
         const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
         pinToggleMenuItem.connect('activate', () => {
@@ -335,15 +336,14 @@ export const AppTab = GObject.registerClass({
             const winId = parseInt(win.get_description(), 16);
             if (isNaN(winId)) return Clutter.EVENT_PROPAGATE;
             try {
-                if (win.decorated) {
-                    GLib.spawn_command_line_sync(
-                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"`
-                    );
-                } else {
-                    GLib.spawn_command_line_sync(
-                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x1, 0x0, 0x0"`
-                    );
-                }
+                const hints = win.decorated
+                    ? '0x2, 0x0, 0x0, 0x0, 0x0'
+                    : '0x2, 0x0, 0x1, 0x0, 0x0';
+                Gio.Subprocess.new(
+                    ['xprop', '-id', `${winId}`, '-f', '_MOTIF_WM_HINTS', '32c',
+                        '-set', '_MOTIF_WM_HINTS', hints],
+                    Gio.SubprocessFlags.NONE
+                );
             } catch (_e) { /* Wayland native windows: silently ignore */ }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -369,12 +369,29 @@ export const AppTab = GObject.registerClass({
 
         const getProcInfoMenuItem = new PopupMenu.PopupMenuItem('Get process information');
         getProcInfoMenuItem.connect('activate', () => {
-            let pid = this.get_current_window().get_pid();
-            let processInfo = WindowUtils.getProcessInfo(pid);
-            this.copyToClipboard(processInfo);
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            const pid = win.get_pid();
+            WindowUtils.getProcessInfo(pid)
+                .then(processInfo => this.copyToClipboard(processInfo))
+                .catch(e => log(`Error getting process info: ${e}`));
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(getProcInfoMenuItem);
+
+        const closeOtherTabsMenuItem = new PopupMenu.PopupMenuItem('Close other tabs');
+        closeOtherTabsMenuItem.connect('activate', () => {
+            this.emit('close-other-tabs');
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(closeOtherTabsMenuItem);
+
+        const closeTabsToTheRightMenuItem = new PopupMenu.PopupMenuItem('Close tabs to the right');
+        closeTabsToTheRightMenuItem.connect('activate', () => {
+            this.emit('close-tabs-to-the-right');
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(closeTabsToTheRightMenuItem);
 
         const closeMenuItem = new PopupMenu.PopupMenuItem('Close');
         closeMenuItem.connect('activate', () => {
@@ -385,14 +402,23 @@ export const AppTab = GObject.registerClass({
 
         const forceKillMenuItem = new PopupMenu.PopupMenuItem('Force kill (Warning!!)');
         forceKillMenuItem.connect('activate', () => {
-            let pid = this.get_current_window().get_pid();
-            let [success, output] = GLib.spawn_command_line_sync(`ps -p ${pid} -o comm=`);
-            if (success && output) {
-                let appName = StringUtils.readString(output).trim();
-                if (appName !== 'gnome-shell') {
-                    this.get_current_window().kill();
-                }
-            }
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            const pid = win.get_pid();
+            try {
+                const proc = Gio.Subprocess.new(
+                    ['ps', '-p', `${pid}`, '-o', 'comm='],
+                    Gio.SubprocessFlags.STDOUT_PIPE
+                );
+                proc.communicate_utf8_async(null, null, (subprocess, res) => {
+                    try {
+                        const [, stdout] = subprocess.communicate_utf8_finish(res);
+                        if (stdout && stdout.trim() !== 'gnome-shell') {
+                            win.kill();
+                        }
+                    } catch (_e) { /* ignore */ }
+                });
+            } catch (_e) { /* ignore */ }
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(forceKillMenuItem);
@@ -401,6 +427,8 @@ export const AppTab = GObject.registerClass({
             const win = this.get_current_window();
             if (!win) return;
             pinToggleMenuItem.label.set_text(win.is_above() ? 'Unpin' : 'Pin');
+            maximizeToggleMenuItem.label.set_text(win.is_maximized() ? 'Unmaximize' : 'Maximize');
+            maximizeToggleMenuItem.setSensitive(win.is_maximized() || win.can_maximize());
             decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
         });
         this._menu_manager.addMenu(this._menu);

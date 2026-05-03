@@ -16,18 +16,9 @@ You can configure app tab style like this on preferences, and the style use the 
 {
   "icon-size": 18,
   "default": {
-    "default_style": {
-      "margin": "4px 0",
-      "border-radius": "8px",
-      "margin-left": "2px",
-      "color": "white"
-    },
-    "active_style": {
-      "background": "#4b4b4b"
-    },
-    "hover_style": {
-      "background": "#4b4b4b"
-    }
+    "default_style": {},
+    "active_style": {},
+    "hover_style": {}
   },
   "light_mode": {
     "default_style": {},
@@ -78,6 +69,10 @@ gnome-extensions prefs huanghaohhoa@163.com
 5. Support drag and drop to rearrange the order of tabs.
 
 If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.
+
+## Recommended
+
+[CoverflowAltTab](https://github.com/dsheeler/CoverflowAltTab): Alt-Tab switcher; in its settings bind **Alt+Tab** to applications and **Alt+Grave** to windows—works well with App Tabs.
 
 ## Development Document
 * https://gjs-docs.gnome.org/

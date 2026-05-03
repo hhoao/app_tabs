@@ -1,5 +1,8 @@
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import * as StringUtils from './StringUtils.js';
+
+Gio._promisify(Gio.File.prototype, 'load_contents_async', 'load_contents_finish');
 
 function formatProcessInfo(obj, indent = 0) {
     const indentSpace = '  '.repeat(indent);
@@ -22,13 +25,11 @@ function formatProcessInfo(obj, indent = 0) {
     return output;
 }
 
-function readProcFile(pid, filename) {
+async function readProcFile(pid, filename) {
     try {
         let file = Gio.File.new_for_path(`/proc/${pid}/${filename}`);
-        let [ok, contents] = file.load_contents(null);
-        if (ok) {
-            return StringUtils.readString(contents);
-        }
+        let [contents] = await file.load_contents_async(null);
+        return StringUtils.readString(contents);
     } catch (e) {
         log(`Error reading /proc/${pid}/${filename}: ${e}`);
     }
@@ -48,8 +49,8 @@ function parseHexIpAndPort(hexString) {
     return { ip, port };
 }
 
-function parseNetworkInfo(pid, filename) {
-    let content = readProcFile(pid, `net/${filename}`);
+async function parseNetworkInfo(pid, filename) {
+    let content = await readProcFile(pid, `net/${filename}`);
     if (!content) return null;
 
     let lines = content.split('\n');
@@ -86,16 +87,18 @@ function getFileDescriptorCount(pid) {
     }
 }
 
-export function getProcessInfo(pid) {
+export async function getProcessInfo(pid) {
     let result = {};
 
     const basicFiles = [
         'status', 'cmdline', 'environ', 'stat', 'comm', 'io', 'statm', 'cgroup', 'limits', 'sched',
     ];
-    for (let file of basicFiles) {
-        let content = readProcFile(pid, file);
-        if (content) {
-            result[file] = content;
+    const basicContents = await Promise.all(
+        basicFiles.map(file => readProcFile(pid, file))
+    );
+    for (let i = 0; i < basicFiles.length; i++) {
+        if (basicContents[i]) {
+            result[basicFiles[i]] = basicContents[i];
         }
     }
 
@@ -115,10 +118,11 @@ export function getProcessInfo(pid) {
         log(`Error reading symbolic links for PID ${pid}: ${e}`);
     }
 
-    result['net'] = {
-        tcp: parseNetworkInfo(pid, 'tcp'),
-        udp: parseNetworkInfo(pid, 'udp'),
-    };
+    const [tcp, udp] = await Promise.all([
+        parseNetworkInfo(pid, 'tcp'),
+        parseNetworkInfo(pid, 'udp'),
+    ]);
+    result['net'] = { tcp, udp };
 
     result['fd'] = getFileDescriptorCount(pid);
 
