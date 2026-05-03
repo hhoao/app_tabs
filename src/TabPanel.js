@@ -497,6 +497,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 this._on_tab_close_button_clicked(tab);
             });
 
+            tab.connect('close-other-tabs', () => {
+                this._close_other_tabs(tab);
+            });
+
+            tab.connect('close-tabs-to-the-right', () => {
+                this._close_tabs_to_the_right_of(tab);
+            });
+
             // Detect when window is closed
             window.connectObject('unmanaged', () => {
                 let corresponding_tab = this._find_tab_by_window(window);
@@ -842,6 +850,37 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (new_index !== current_index) {
             this._reorder_tab(tab, new_index);
         }
+    }
+
+    _close_other_tabs(triggerTab) {
+        let visible_tabs = this._get_visible_tabs();
+        let time = global.get_current_time();
+        let toClose = [];
+        for (let t of visible_tabs) {
+            if (t === triggerTab)
+                continue;
+            let win = t.get_current_window();
+            if (win?.can_close())
+                toClose.push(win);
+        }
+        for (let win of toClose)
+            win.delete(time);
+    }
+
+    _close_tabs_to_the_right_of(triggerTab) {
+        let visible_tabs = this._get_visible_tabs();
+        let idx = visible_tabs.indexOf(triggerTab);
+        if (idx === -1)
+            return;
+        let time = global.get_current_time();
+        let toClose = [];
+        for (let i = idx + 1; i < visible_tabs.length; i++) {
+            let win = visible_tabs[i].get_current_window();
+            if (win?.can_close())
+                toClose.push(win);
+        }
+        for (let win of toClose)
+            win.delete(time);
     }
 
     _load_saved_tabs_order() {

@@ -19,6 +19,8 @@ export const AppTab = GObject.registerClass({
     Signals: {
         'move-tab': { param_types: [GObject.TYPE_INT] },
         'close-tab': {},
+        'close-other-tabs': {},
+        'close-tabs-to-the-right': {},
         'active-state-changed': {},
     },
 }, class AppTab extends St.Button {
@@ -300,20 +302,19 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(minimizeMenuItem);
 
-        const maximizeMenuItem = new PopupMenu.PopupMenuItem('Maximize');
-        maximizeMenuItem.connect('activate', () => {
-            this.get_current_window().activate(0);
-            this.get_current_window().maximize();
+        const maximizeToggleMenuItem = new PopupMenu.PopupMenuItem('Maximize');
+        maximizeToggleMenuItem.connect('activate', () => {
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            if (win.is_maximized())
+                win.unmaximize();
+            else {
+                win.activate(0);
+                win.maximize();
+            }
             return Clutter.EVENT_PROPAGATE;
         });
-        this._menu.addMenuItem(maximizeMenuItem);
-
-        const unMaximizeMenuItem = new PopupMenu.PopupMenuItem('UnMaximize');
-        unMaximizeMenuItem.connect('activate', () => {
-            this.get_current_window().unmaximize();
-            return Clutter.EVENT_PROPAGATE;
-        });
-        this._menu.addMenuItem(unMaximizeMenuItem);
+        this._menu.addMenuItem(maximizeToggleMenuItem);
 
         const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
         pinToggleMenuItem.connect('activate', () => {
@@ -377,6 +378,20 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(getProcInfoMenuItem);
 
+        const closeOtherTabsMenuItem = new PopupMenu.PopupMenuItem('Close other tabs');
+        closeOtherTabsMenuItem.connect('activate', () => {
+            this.emit('close-other-tabs');
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(closeOtherTabsMenuItem);
+
+        const closeTabsToTheRightMenuItem = new PopupMenu.PopupMenuItem('Close tabs to the right');
+        closeTabsToTheRightMenuItem.connect('activate', () => {
+            this.emit('close-tabs-to-the-right');
+            return Clutter.EVENT_PROPAGATE;
+        });
+        this._menu.addMenuItem(closeTabsToTheRightMenuItem);
+
         const closeMenuItem = new PopupMenu.PopupMenuItem('Close');
         closeMenuItem.connect('activate', () => {
             this.get_current_window().delete(global.get_current_time());
@@ -402,6 +417,8 @@ export const AppTab = GObject.registerClass({
             const win = this.get_current_window();
             if (!win) return;
             pinToggleMenuItem.label.set_text(win.is_above() ? 'Unpin' : 'Pin');
+            maximizeToggleMenuItem.label.set_text(win.is_maximized() ? 'Unmaximize' : 'Maximize');
+            maximizeToggleMenuItem.setSensitive(win.is_maximized() || win.can_maximize());
             decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
         });
         this._menu_manager.addMenu(this._menu);
