@@ -44,3 +44,13 @@ test('empty tab list still has one hidden divider boundary', () => {
     assert(visibility.length === 1, 'empty tab pool should still expose one boundary');
     assert(visibility[0] === false, 'empty boundary should stay hidden');
 });
+
+test('trailing add button behaves like an inactive tab for divider visibility', () => {
+    let inactiveTabAndAddButton = getDividerVisibility([false, false]);
+    let activeTabAndAddButton = getDividerVisibility([true, false]);
+
+    assert(inactiveTabAndAddButton.join(',') === 'false,true,false',
+        'inactive tab and add button should keep their separator');
+    assert(activeTabAndAddButton.join(',') === 'false,false,false',
+        'active tab and add button should hide their separator');
+});

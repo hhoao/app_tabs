@@ -42,6 +42,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_controls = new TabControls({
             isDarkMode: this._is_dark_mode(),
             panelHeight: this._get_panel_height(),
+            onAddTab: this._open_new_tab_for_target_app.bind(this),
         });
         this._scroll_view.add_child(this._tab_controls.actor);
         this.add_child(this._scroll_view);
@@ -204,6 +205,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         for (let tab of this._tabs_pool) {
             tab.set_app_tab_config(JSON.parse(this._settings.get_string(key)));
         }
+    }
+
+    _open_new_tab_for_target_app() {
+        if (!this._target_app?.can_open_new_window?.())
+            return;
+
+        this._target_app.open_new_window(-1);
     }
 
     _on_ellipsize_mode_changed(settings, mode) {

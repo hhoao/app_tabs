@@ -1,0 +1,65 @@
+import GLib from 'gi://GLib';
+
+function assert(condition, message) {
+    if (!condition)
+        throw new Error(message);
+}
+
+function test(name, fn) {
+    try {
+        fn();
+        print(`PASS ${name}`);
+    } catch (error) {
+        printerr(`FAIL ${name}: ${error.message}`);
+        throw error;
+    }
+}
+
+function readSource(path) {
+    let [, bytes] = GLib.file_get_contents(path);
+    return new TextDecoder().decode(bytes);
+}
+
+test('TabControls renders a trailing add-tab button wired to its callback', () => {
+    let source = readSource('./src/TabControls.js');
+
+    assert(source.includes('onAddTab'),
+        'expected TabControls constructor to accept an add-tab callback');
+    assert(source.includes('_add_tab_button'),
+        'expected TabControls to own a trailing add-tab button');
+    assert(source.includes('app-tabs-add-button'),
+        'expected add-tab button to have a dedicated style class');
+    assert(source.includes("icon_name: 'list-add-symbolic'"),
+        'expected add-tab button to use the GNOME add icon');
+    assert(source.includes(".connect('clicked'") && source.includes('this._on_add_tab?.()'),
+        'expected add-tab button clicks to invoke the callback');
+    assert(source.includes(".connect('notify::hover'") &&
+        source.includes('buildAddButtonStyle'),
+        'expected add-tab button hover to use adaptive theme styling');
+});
+
+test('TabPanel asks the current application to open a new window from the add button', () => {
+    let source = readSource('./src/TabPanel.js');
+
+    assert(source.includes('onAddTab: this._open_new_tab_for_target_app.bind(this)'),
+        'expected TabPanel to pass the add-tab callback into TabControls');
+    assert(source.includes('_open_new_tab_for_target_app()'),
+        'expected TabPanel to own current-app tab creation logic');
+    assert(source.includes('this._target_app?.can_open_new_window?.()'),
+        'expected TabPanel to guard against apps that cannot open new windows');
+    assert(source.includes('this._target_app.open_new_window(-1)'),
+        'expected TabPanel to open a new window for the current application');
+});
+
+test('TabControls treats the trailing add button as an inactive tab for dividers', () => {
+    let source = readSource('./src/TabControls.js');
+
+    assert(source.includes('...this._tabs.map(tab => tab.is_focused()),') &&
+        source.includes('false,'),
+        'expected add button to participate in divider visibility as inactive');
+    assert(source.includes('this._tabs.length + 2'),
+        'expected divider pool to include both sides of the add button');
+    assert(source.includes('this.actor.add_child(this._add_tab_button);') &&
+        source.includes('this.actor.add_child(this._tab_divider_pool[this._tabs.length + 1]);'),
+        'expected layout to place the add button between dividers');
+});

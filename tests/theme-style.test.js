@@ -1,4 +1,6 @@
 import {
+    buildAddButtonStyle,
+    buildCloseButtonStyle,
     buildDividerStyle,
     buildTabStyle,
     isDarkTheme,
@@ -171,4 +173,29 @@ test('buildDividerStyle matches rounded tab vertical edge height', () => {
 
     assert(style.includes('height:18px;'), 'divider height should exclude rounded corners');
     assert(style.includes('min-height:18px;'), 'divider min-height should exclude rounded corners');
+});
+
+test('buildAddButtonStyle supplies visible light and dark hover states', () => {
+    let lightStyle = buildAddButtonStyle(false, true);
+    let darkStyle = buildAddButtonStyle(true, true);
+
+    assert(lightStyle.includes('width:28px;') && lightStyle.includes('height:28px;'),
+        'add button hover background should leave padding around the icon');
+    assert(lightStyle.includes('padding:2px;'),
+        'add button should have a little padding around the plus icon');
+    assert(lightStyle.includes('border-radius:999px;'),
+        'add button hover background should be rounded into a circle');
+    assert(lightStyle.includes('background:rgba(0, 0, 0, 0.08);'),
+        'light add button hover should use a visible dark overlay');
+    assert(darkStyle.includes('background:rgba(255, 255, 255, 0.12);'),
+        'dark add button hover should use a visible light overlay');
+});
+
+test('buildCloseButtonStyle uses the same circular hover shape as the add button', () => {
+    let style = buildCloseButtonStyle(false, true);
+
+    assert(style.includes('width:24px;') && style.includes('height:24px;'),
+        'close button hover background should be a square before rounding');
+    assert(style.includes('border-radius:999px;'),
+        'close button hover background should be rounded into a circle');
 });

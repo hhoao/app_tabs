@@ -120,21 +120,34 @@ export function buildTabStyle({
 }
 
 export function buildCloseButtonStyle(isDarkMode, isHover = false) {
+    return buildCircularIconButtonStyle(isDarkMode, isHover);
+}
+
+function buildCircularIconButtonStyle(isDarkMode, isHover = false, size = 24, padding = 0) {
     let style = {
-        'border-radius': '16px',
+        'width': `${size}px`,
+        'height': `${size}px`,
+        'min-width': `${size}px`,
+        'min-height': `${size}px`,
+        'padding': `${padding}px`,
+        'border-radius': '999px',
         'transition-duration': '0.2s',
         'transition-property': 'background-color',
     };
 
     if (isHover) {
         style['background'] = isDarkMode
-            ? 'rgba(255, 255, 255, 0.14)'
-            : 'rgba(0, 0, 0, 0.10)';
+            ? 'rgba(255, 255, 255, 0.12)'
+            : 'rgba(0, 0, 0, 0.08)';
     } else {
         style['background'] = 'transparent';
     }
 
     return styleObjectToString(style);
+}
+
+export function buildAddButtonStyle(isDarkMode, isHover = false) {
+    return buildCircularIconButtonStyle(isDarkMode, isHover, 28, 2);
 }
 
 export function buildDividerStyle(isDarkMode, panelHeight = MIN_TAB_HEIGHT + PANEL_VERTICAL_PADDING) {
