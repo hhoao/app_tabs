@@ -16,18 +16,9 @@ You can configure app tab style like this on preferences, and the style use the 
 {
   "icon-size": 18,
   "default": {
-    "default_style": {
-      "margin": "4px 0",
-      "border-radius": "8px",
-      "margin-left": "2px",
-      "color": "white"
-    },
-    "active_style": {
-      "background": "#4b4b4b"
-    },
-    "hover_style": {
-      "background": "#4b4b4b"
-    }
+    "default_style": {},
+    "active_style": {},
+    "hover_style": {}
   },
   "light_mode": {
     "default_style": {},

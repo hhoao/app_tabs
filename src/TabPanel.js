@@ -11,6 +11,7 @@ import Clutter from 'gi://Clutter';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { shouldStartPreparedDrag } from './utils/DragPreparation.js';
+import { isDarkTheme } from './utils/ThemeStyle.js';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -50,6 +51,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         global.window_manager.connectObject('switch-workspace',
             this._on_workspace_switched.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this);
+        Main.panel.connectObject(
+            'notify::height', this._on_panel_height_changed.bind(this),
+            'style-changed', this._on_panel_height_changed.bind(this),
+            this);
 
         // Detect when GNOME Shell is initialized/restarted
         // Use timeout to execute sync after complete initialization
@@ -94,6 +99,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._on_theme_changed.bind(this),
             this,
         );
+        if (this._desktop_setting_has_key(SchemaKeyConstants.COLOR_SCHEME)) {
+            this._desktop_settings.connectObject(
+                this.get_changed_key(SchemaKeyConstants.COLOR_SCHEME),
+                this._on_theme_changed.bind(this),
+                this,
+            );
+        }
     }
 
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
@@ -110,6 +122,32 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } else {
             this._scroll_view.set_style('');
         }
+    }
+
+    _desktop_setting_has_key(key) {
+        return this._desktop_settings.settings_schema?.has_key(key) ?? false;
+    }
+
+    _get_desktop_setting_string(key) {
+        if (!this._desktop_setting_has_key(key))
+            return '';
+
+        return this._desktop_settings.get_string(key);
+    }
+
+    _get_theme_state() {
+        return {
+            gtkTheme: this._get_desktop_setting_string(SchemaKeyConstants.GTK_THEME),
+            colorScheme: this._get_desktop_setting_string(SchemaKeyConstants.COLOR_SCHEME),
+        };
+    }
+
+    _is_dark_mode() {
+        return isDarkTheme(this._get_theme_state());
+    }
+
+    _get_panel_height() {
+        return Main.panel.get_height?.() ?? Main.panel.height ?? 30;
     }
 
     get_horizontal_scroll_view() {
@@ -137,8 +175,16 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     }
 
     _on_theme_changed(settings, key) {
+        let themeState = this._get_theme_state();
         for (let tab of this._tabs_pool) {
-            tab.set_theme(settings.get_string(key));
+            tab.set_theme(themeState);
+        }
+    }
+
+    _on_panel_height_changed() {
+        let panelHeight = this._get_panel_height();
+        for (let tab of this._tabs_pool) {
+            tab.set_panel_height(panelHeight);
         }
     }
 
@@ -204,6 +250,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         global.window_manager?.disconnectObject(this);
         Shell.WindowTracker?.get_default().disconnectObject(this);
         Shell.AppSystem.get_default()?.disconnectObject(this);
+        Main.panel?.disconnectObject(this);
         Main.layoutManager?.disconnectObject(this);
         for (let tab of this._tabs_pool) {
             tab.destroy();
@@ -246,7 +293,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
             let app_tab = new AppTab({
                 style_config: JSON.parse(this._settings.get_string(SchemaKeyConstants.APP_TAB_CONFIG)),
-                is_dark_mode: this._desktop_settings.get_string(SchemaKeyConstants.GTK_THEME),
+                is_dark_mode: this._is_dark_mode(),
+                panel_height: this._get_panel_height(),
                 settings: this._settings,
                 menu_manager: this._menu_manager,
             });

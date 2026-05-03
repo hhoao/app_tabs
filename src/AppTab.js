@@ -9,8 +9,12 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import GLib from 'gi://GLib';
 import * as WindowUtils from './utils/WindowUtils.js';
 import * as StringUtils from './utils/StringUtils.js';
-import Gio from "gi://Gio";
-import { getExtensionObject } from "../extension.js";
+import {
+    buildCloseButtonStyle,
+    buildDividerStyle,
+    buildTabStyle,
+    isDarkTheme,
+} from './utils/ThemeStyle.js';
 
 export const AppTab = GObject.registerClass({
     Signals: {
@@ -27,7 +31,11 @@ export const AppTab = GObject.registerClass({
         this._menu_manager = props.menu_manager;
         this._settings = props.settings;
         this._is_dark_mode = props.is_dark_mode;
+        this._panel_height = props.panel_height;
         this._style_config = props.style_config;
+        this._is_active = false;
+        this._is_hover = false;
+        this._is_close_hover = false;
         // Meta.Window
         this._current_window = null;
         this._divide = null;
@@ -46,80 +54,91 @@ export const AppTab = GObject.registerClass({
             }
             return Clutter.EVENT_PROPAGATE;
         });
+        this.connect('notify::hover', () => {
+            this._is_hover = this.hover;
+            this._apply_tab_style();
+        });
         this.connect('clicked', () => {
             if (this.get_current_window() != null) {
                 if (!this.get_current_window().has_focus()) {
                     this.get_current_window().activate(0);
                 } else {
                     this.get_current_window().minimize();
-                    this.set_style(this._get_tab_style(false));
+                    this._is_active = false;
+                    this._apply_tab_style();
                 }
             }
         });
+
+        this._apply_tab_style();
+        this._apply_close_button_style();
     }
 
     set_app_tab_config(config) {
         this._style_config = config;
-        if (Number.parseInt(this._style_config['icon-size']) !== this._icon.get_icon_size()) {
-            this._icon.set_icon_size(Number.parseInt(this._style_config['icon-size']));
+        let iconSize = Number.parseInt(this._style_config?.['icon-size']);
+        if (!Number.isNaN(iconSize) && iconSize !== this._icon.get_icon_size()) {
+            this._icon.set_icon_size(iconSize);
         }
+        this._apply_tab_style();
     }
 
     on_active(window) {
         if (this.get_current_window() === window) {
-            this.set_style(this._get_tab_style(true));
+            this._is_active = true;
+            this._apply_tab_style();
             this.hide_divide();
         } else {
-            this.set_style(this._get_tab_style());
+            this._is_active = false;
+            this._apply_tab_style();
             this.show_divide();
         }
     }
 
-    _extract_config_style(style_config, is_active = false, is_hover = false) {
-        let tab_style = { ...style_config.default_style };
-        if (is_hover && style_config.hover_style) {
-            let hover_tab_style = { ...style_config.hover_style };
-            for (let name in hover_tab_style) {
-                tab_style[name] = hover_tab_style[name];
-            }
-        } else if (is_active && style_config.active_style) {
-            let active_tab_style = { ...style_config.active_style };
-            for (let name in active_tab_style) {
-                tab_style[name] = active_tab_style[name];
-            }
-        }
-        return tab_style;
+    _get_tab_style() {
+        return buildTabStyle({
+            styleConfig: this._style_config,
+            isDarkMode: this._is_dark_mode,
+            isActive: this._is_active,
+            isHover: this._is_hover,
+            panelHeight: this._panel_height,
+        });
     }
 
-    _get_tab_style(is_active = false, is_hover = false) {
-        let style = '';
-        let tab_style = {}, mode_tab_style = {};
-        if (this._style_config.default) {
-            tab_style = this._extract_config_style(this._style_config.default, is_active, is_hover);
-        }
-        if (!this._is_dark_mode && this._style_config.light_mode) {
-            mode_tab_style = this._extract_config_style(this._style_config.light_mode, is_active, is_hover);
-        } else if (this._is_dark_mode && this._style_config.dark_mode) {
-            mode_tab_style = this._extract_config_style(this._style_config.dark_mode, is_active, is_hover);
-        }
-        for (let name in mode_tab_style) {
-            tab_style[name] = mode_tab_style[name];
-        }
-        for (let name in tab_style) {
-            style += name + ':' + tab_style[name] + ';';
-        }
-        return style;
+    _apply_tab_style() {
+        this.set_style(this._get_tab_style());
     }
 
-    set_theme(theme) {
-        this._is_dark_mode = theme.includes('dark');
+    _apply_close_button_style() {
+        this._close_button?.set_style(buildCloseButtonStyle(this._is_dark_mode, this._is_close_hover));
+    }
+
+    _apply_divider_style() {
+        this._divide?.set_style(buildDividerStyle(this._is_dark_mode, this._panel_height));
+    }
+
+    _apply_theme_styles() {
+        this._apply_tab_style();
+        this._apply_close_button_style();
+        this._apply_divider_style();
+    }
+
+    set_theme(themeState) {
+        this._is_dark_mode = typeof themeState === 'boolean'
+            ? themeState
+            : isDarkTheme(themeState);
+        this._apply_theme_styles();
+    }
+
+    set_panel_height(panelHeight) {
+        this._panel_height = panelHeight;
+        this._apply_tab_style();
+        this._apply_divider_style();
     }
 
     _init_close_button() {
         const close_icon = new St.Icon({
-            gicon: Gio.icon_new_for_string(
-                getExtensionObject().path + "/icons/close.svg"
-            ),
+            icon_name: 'window-close-symbolic',
             style_class: "close-icon",
             icon_size: "16",
         });
@@ -135,6 +154,10 @@ export const AppTab = GObject.registerClass({
                 this.get_current_window().delete(global.get_current_time());
                 this.emit('close-tab');
             }
+        });
+        this._close_button.connect('notify::hover', () => {
+            this._is_close_hover = this._close_button.hover;
+            this._apply_close_button_style();
         });
         this._close_button.add_style_class_name('app-tab-close-button');
         this._controls.add_child(this._close_button);
@@ -219,6 +242,7 @@ export const AppTab = GObject.registerClass({
 
     set_divide(divide) {
         this._divide = divide;
+        this._apply_divider_style();
     }
 
     hide_divide() {
