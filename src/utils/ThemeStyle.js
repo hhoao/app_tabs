@@ -144,6 +144,9 @@ export function buildDividerStyle(isDarkMode, panelHeight = MIN_TAB_HEIGHT + PAN
     let verticalMargin = Math.max(3, Math.floor((panelHeight - minHeight) / 2));
 
     return styleObjectToString({
+        'height': `${minHeight}px`,
+        'min-height': `${minHeight}px`,
+        'max-height': `${minHeight}px`,
         'margin-top': `${verticalMargin}px`,
         'margin-bottom': `${verticalMargin}px`,
         'background-color': background,

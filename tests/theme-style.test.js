@@ -165,3 +165,10 @@ test('buildDividerStyle adjusts separator margins from panel height', () => {
     assert(compactStyle.includes('margin-top:3px;'), 'compact panel separator should stay compact');
     assert(tallStyle.includes('margin-top:5px;'), 'tall panel separator should use taller margins');
 });
+
+test('buildDividerStyle matches rounded tab vertical edge height', () => {
+    let style = buildDividerStyle(false, 44);
+
+    assert(style.includes('height:34px;'), 'divider height should match tall tab min-height');
+    assert(style.includes('min-height:34px;'), 'divider min-height should match tall tab min-height');
+});

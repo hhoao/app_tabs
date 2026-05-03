@@ -11,7 +11,6 @@ import * as WindowUtils from './utils/WindowUtils.js';
 import * as StringUtils from './utils/StringUtils.js';
 import {
     buildCloseButtonStyle,
-    buildDividerStyle,
     buildTabStyle,
     isDarkTheme,
 } from './utils/ThemeStyle.js';
@@ -20,6 +19,7 @@ export const AppTab = GObject.registerClass({
     Signals: {
         'move-tab': { param_types: [GObject.TYPE_INT] },
         'close-tab': {},
+        'active-state-changed': {},
     },
 }, class AppTab extends St.Button {
     _init(props) {
@@ -38,7 +38,6 @@ export const AppTab = GObject.registerClass({
         this._is_close_hover = false;
         // Meta.Window
         this._current_window = null;
-        this._divide = null;
         this.add_style_class_name('app-tab');
 
         this._init_controls();
@@ -64,8 +63,7 @@ export const AppTab = GObject.registerClass({
                     this.get_current_window().activate(0);
                 } else {
                     this.get_current_window().minimize();
-                    this._is_active = false;
-                    this._apply_tab_style();
+                    this._set_active(false);
                 }
             }
         });
@@ -84,15 +82,16 @@ export const AppTab = GObject.registerClass({
     }
 
     on_active(window) {
-        if (this.get_current_window() === window) {
-            this._is_active = true;
-            this._apply_tab_style();
-            this.hide_divide();
-        } else {
-            this._is_active = false;
-            this._apply_tab_style();
-            this.show_divide();
-        }
+        this._set_active(this.get_current_window() === window);
+    }
+
+    _set_active(isActive) {
+        if (this._is_active === isActive)
+            return;
+
+        this._is_active = isActive;
+        this._apply_tab_style();
+        this.emit('active-state-changed');
     }
 
     _get_tab_style() {
@@ -113,14 +112,9 @@ export const AppTab = GObject.registerClass({
         this._close_button?.set_style(buildCloseButtonStyle(this._is_dark_mode, this._is_close_hover));
     }
 
-    _apply_divider_style() {
-        this._divide?.set_style(buildDividerStyle(this._is_dark_mode, this._panel_height));
-    }
-
     _apply_theme_styles() {
         this._apply_tab_style();
         this._apply_close_button_style();
-        this._apply_divider_style();
     }
 
     set_theme(themeState) {
@@ -133,7 +127,6 @@ export const AppTab = GObject.registerClass({
     set_panel_height(panelHeight) {
         this._panel_height = panelHeight;
         this._apply_tab_style();
-        this._apply_divider_style();
     }
 
     _init_close_button() {
@@ -213,7 +206,6 @@ export const AppTab = GObject.registerClass({
 
     destroy() {
         this._icon.destroy();
-        this._divide.destroy();
         this._label.destroy();
         this._drag_handle.destroy();
         this._close_button.destroy();
@@ -226,7 +218,6 @@ export const AppTab = GObject.registerClass({
         this._style_config = null;
         this._controls = null;
         this._label = null;
-        this._divide = null;
         this._drag_handle = null;
         this._menu = null;
         super.destroy();
@@ -236,29 +227,18 @@ export const AppTab = GObject.registerClass({
         this._icon.set_gicon(gio_icon);
     }
 
-    get_divide() {
-        return this._divide;
-    }
-
-    set_divide(divide) {
-        this._divide = divide;
-        this._apply_divider_style();
-    }
-
-    hide_divide() {
-        this._divide.hide();
-    }
-
-    show_divide() {
-        this._divide.show();
-    }
-
     is_active() {
         return this._current_window != null;
     }
 
+    is_focused() {
+        return this._is_active;
+    }
+
     set_current_window(window) {
         this._current_window = window;
+        if (window === null)
+            this._set_active(false);
     }
 
     get_current_window() {
@@ -292,9 +272,6 @@ export const AppTab = GObject.registerClass({
         }
 
         this.hide();
-        if (this._divide) {
-            this._divide.hide();
-        }
         this.remove_all_transitions();
         this.ease({
             opacity: 0,
@@ -316,7 +293,7 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(showMenuItem);
 
-        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Minimize');
+        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Hide');
         minimizeMenuItem.connect('activate', () => {
             this.get_current_window().minimize();
             return Clutter.EVENT_PROPAGATE;
