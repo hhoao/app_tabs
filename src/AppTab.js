@@ -6,9 +6,8 @@ import Pango from 'gi://Pango';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
 import * as WindowUtils from './utils/WindowUtils.js';
-import * as StringUtils from './utils/StringUtils.js';
 import {
     buildCloseButtonStyle,
     buildTabStyle,
@@ -337,15 +336,14 @@ export const AppTab = GObject.registerClass({
             const winId = parseInt(win.get_description(), 16);
             if (isNaN(winId)) return Clutter.EVENT_PROPAGATE;
             try {
-                if (win.decorated) {
-                    GLib.spawn_command_line_sync(
-                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x0, 0x0, 0x0"`
-                    );
-                } else {
-                    GLib.spawn_command_line_sync(
-                        `xprop -id ${winId} -f _MOTIF_WM_HINTS 32c -set _MOTIF_WM_HINTS "0x2, 0x0, 0x1, 0x0, 0x0"`
-                    );
-                }
+                const hints = win.decorated
+                    ? '0x2, 0x0, 0x0, 0x0, 0x0'
+                    : '0x2, 0x0, 0x1, 0x0, 0x0';
+                Gio.Subprocess.new(
+                    ['xprop', '-id', `${winId}`, '-f', '_MOTIF_WM_HINTS', '32c',
+                        '-set', '_MOTIF_WM_HINTS', hints],
+                    Gio.SubprocessFlags.NONE
+                );
             } catch (_e) { /* Wayland native windows: silently ignore */ }
             return Clutter.EVENT_PROPAGATE;
         });
@@ -371,9 +369,12 @@ export const AppTab = GObject.registerClass({
 
         const getProcInfoMenuItem = new PopupMenu.PopupMenuItem('Get process information');
         getProcInfoMenuItem.connect('activate', () => {
-            let pid = this.get_current_window().get_pid();
-            let processInfo = WindowUtils.getProcessInfo(pid);
-            this.copyToClipboard(processInfo);
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            const pid = win.get_pid();
+            WindowUtils.getProcessInfo(pid)
+                .then(processInfo => this.copyToClipboard(processInfo))
+                .catch(e => log(`Error getting process info: ${e}`));
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(getProcInfoMenuItem);
@@ -401,14 +402,23 @@ export const AppTab = GObject.registerClass({
 
         const forceKillMenuItem = new PopupMenu.PopupMenuItem('Force kill (Warning!!)');
         forceKillMenuItem.connect('activate', () => {
-            let pid = this.get_current_window().get_pid();
-            let [success, output] = GLib.spawn_command_line_sync(`ps -p ${pid} -o comm=`);
-            if (success && output) {
-                let appName = StringUtils.readString(output).trim();
-                if (appName !== 'gnome-shell') {
-                    this.get_current_window().kill();
-                }
-            }
+            const win = this.get_current_window();
+            if (!win) return Clutter.EVENT_PROPAGATE;
+            const pid = win.get_pid();
+            try {
+                const proc = Gio.Subprocess.new(
+                    ['ps', '-p', `${pid}`, '-o', 'comm='],
+                    Gio.SubprocessFlags.STDOUT_PIPE
+                );
+                proc.communicate_utf8_async(null, null, (subprocess, res) => {
+                    try {
+                        const [, stdout] = subprocess.communicate_utf8_finish(res);
+                        if (stdout && stdout.trim() !== 'gnome-shell') {
+                            win.kill();
+                        }
+                    } catch (_e) { /* ignore */ }
+                });
+            } catch (_e) { /* ignore */ }
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(forceKillMenuItem);

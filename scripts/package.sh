@@ -29,4 +29,4 @@ else
 fi
 package_name="${package_name%.zip}"
 
-zip -r "${package_name}.zip" "${existing_files[@]}"
+zip -r "${package_name}.zip" "${existing_files[@]}" -x 'schemas/gschemas.compiled'
