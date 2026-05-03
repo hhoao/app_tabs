@@ -1,5 +1,5 @@
 const MIN_TAB_HEIGHT = 20;
-const PANEL_VERTICAL_PADDING = 10;
+const PANEL_VERTICAL_PADDING = 14;
 const TAB_BORDER_RADIUS = 8;
 const LEGACY_DEFAULT_STYLE = {
     'margin': '4px 0',
@@ -59,7 +59,7 @@ function isLegacyDefaultConfig(styleConfig = {}) {
 function getAdaptiveTabStyle(isDarkMode, isActive, isHover, panelHeight) {
     let minHeight = Math.max(MIN_TAB_HEIGHT, panelHeight - PANEL_VERTICAL_PADDING);
     let style = {
-        'margin': '0 2px',
+        'margin': '6px 2px',
         'border-radius': `${TAB_BORDER_RADIUS}px`,
         'color': isDarkMode ? '#ffffff' : '#242424',
         'min-height': `${minHeight}px`,
@@ -147,7 +147,7 @@ function buildCircularIconButtonStyle(isDarkMode, isHover = false, size = 24, pa
 }
 
 export function buildAddButtonStyle(isDarkMode, isHover = false) {
-    return buildCircularIconButtonStyle(isDarkMode, isHover, 28, 2);
+    return buildCircularIconButtonStyle(isDarkMode, isHover, 24, 1);
 }
 
 export function buildDividerStyle(isDarkMode, panelHeight = MIN_TAB_HEIGHT + PANEL_VERTICAL_PADDING) {
