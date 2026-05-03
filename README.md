@@ -70,6 +70,10 @@ gnome-extensions prefs huanghaohhoa@163.com
 
 If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.
 
+## Recommended
+
+[CoverflowAltTab](https://github.com/dsheeler/CoverflowAltTab): Alt-Tab switcher; in its settings bind **Alt+Tab** to applications and **Alt+Grave** to windows—works well with App Tabs.
+
 ## Development Document
 * https://gjs-docs.gnome.org/
 * https://gjs.guide/guides/
