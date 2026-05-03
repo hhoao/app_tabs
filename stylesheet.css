@@ -28,10 +28,11 @@
 }
 
 .app-tab-close-button {
-    padding-left: 6px;
-    padding-right: 6px;
-    border-radius: 16px;
-    width: 10px;
+    padding: 0;
+}
+
+.app-tabs-add-button {
+    margin: 4px 0 4px 6px;
 }
 
 /* Estilos para drag & drop */
