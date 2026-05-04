@@ -5,7 +5,7 @@ repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
 # locale: ship only .mo for EGO (exclude .pot/.po/POTFILES.in per review guidelines).
-# assets: prefs about page icon (see prefs.js).
+# assets: only common/ + internal/ (shared + shell UI). external/ is repo-only (e.g. README images).
 include_files=(
   src
   stylesheet.css
@@ -14,9 +14,9 @@ include_files=(
   prefs.js
   LICENSE
   schemas
-  icons
   locale
-  assets
+  assets/common
+  assets/internal
 )
 
 existing_files=()

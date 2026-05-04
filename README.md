@@ -1,6 +1,6 @@
 # App Tabs
 
-![](https://github.com/hhoao/app_tabs/blob/main/assets/img.png?raw=true)
+![](https://github.com/hhoao/app_tabs/blob/main/assets/external/img.png?raw=true)
 
 ## Overview
 

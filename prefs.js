@@ -17,7 +17,7 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
     get_about_header_group() {
         const group = new Adw.PreferencesGroup();
         const extensionName = this.metadata?.name ?? PrefsStrings.defaultExtensionName;
-        const iconPath = `${this.path}/assets/icon.svg`;
+        const iconPath = `${this.path}/assets/common/icon.svg`;
         const card = new Gtk.Box({
             orientation: Gtk.Orientation.VERTICAL,
             spacing: 10,
