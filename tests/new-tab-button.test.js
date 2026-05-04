@@ -75,3 +75,29 @@ test('TabPanel places the add button outside the scroll view on the right', () =
         source.includes('this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());'),
         'expected add button and its divider to be added beside the scroll view');
 });
+
+test('TabControls can hide the add button and its divider together', () => {
+    let source = readSource('./src/TabControls.js');
+
+    assert(source.includes('set_add_tab_visible(isVisible)'),
+        'expected TabControls to expose add button visibility control');
+    assert(source.includes('this._add_tab_button.show()') &&
+        source.includes('this._add_tab_button.hide()'),
+        'expected add button visibility control to show and hide the button');
+    assert(source.includes('this._is_add_tab_visible'),
+        'expected divider visibility to know whether the add button is visible');
+});
+
+test('TabPanel hides the add button only when there are no retained windows', () => {
+    let source = readSource('./src/TabPanel.js');
+
+    assert(source.includes('this._tab_controls.set_add_tab_visible(false);') &&
+        source.includes('if (!app)'),
+        'expected add button to hide when there is no retained target application');
+    assert(source.includes('windows.length > 0'),
+        'expected add button visibility to depend on visible windows');
+    assert(!source.includes('windows.length > 0 && app.can_open_new_window?.()'),
+        'expected add button visibility not to depend on can_open_new_window timing');
+    assert(source.includes('targetApp !== null && this._target_app !== targetApp'),
+        'expected sync to keep previous app tabs when no application is focused');
+});

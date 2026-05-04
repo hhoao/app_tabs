@@ -403,6 +403,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = 0;
 
         if (!app) {
+            this._tab_controls.set_add_tab_visible(false);
             return;
         }
 
@@ -414,6 +415,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } else {
             windows = app.get_windows().filter(w => !w.skip_taskbar);
         }
+        this._tab_controls.set_add_tab_visible(windows.length > 0);
         let info = this._get_windows_info(windows);
         if (info[0].length > 0) {
             this._add_tabs_by_windows(app, info[0]);

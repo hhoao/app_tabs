@@ -15,9 +15,11 @@ export class TabControls {
         this._is_dark_mode = isDarkMode;
         this._panel_height = panelHeight;
         this._add_tab_divider = this._create_divider();
+        this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
         this._on_add_tab = onAddTab ?? (() => {});
         this._add_tab_button = this._create_add_tab_button();
+        this.set_add_tab_visible(false);
         this._ensure_divider_count();
     }
 
@@ -28,6 +30,7 @@ export class TabControls {
         this._tab_divider_pool = null;
         this._drag_placeholder = null;
         this._add_tab_divider = null;
+        this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
         this._on_add_tab = null;
         this._add_tab_button = null;
@@ -135,7 +138,7 @@ export class TabControls {
                 divider.hide();
         });
 
-        if (divider_visibility[this._tabs.length])
+        if (this._is_add_tab_visible && divider_visibility[this._tabs.length])
             this._add_tab_divider.show();
         else
             this._add_tab_divider.hide();
@@ -183,6 +186,15 @@ export class TabControls {
 
     get_add_tab_divider() {
         return this._add_tab_divider;
+    }
+
+    set_add_tab_visible(isVisible) {
+        this._is_add_tab_visible = isVisible;
+        if (isVisible)
+            this._add_tab_button.show();
+        else
+            this._add_tab_button.hide();
+        this.refresh_active_state();
     }
 
     _apply_divider_styles() {
