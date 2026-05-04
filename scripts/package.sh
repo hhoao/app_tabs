@@ -4,7 +4,8 @@ set -euo pipefail
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
-# locale: gettext .mo for UI languages; assets: prefs about page icon (see prefs.js).
+# locale: ship only .mo for EGO (exclude .pot/.po/POTFILES.in per review guidelines).
+# assets: prefs about page icon (see prefs.js).
 include_files=(
   src
   stylesheet.css
@@ -32,4 +33,8 @@ else
 fi
 package_name="${package_name%.zip}"
 
-zip -r "${package_name}.zip" "${existing_files[@]}" -x 'schemas/gschemas.compiled'
+zip -r "${package_name}.zip" "${existing_files[@]}" \
+  -x 'schemas/gschemas.compiled' \
+  -x 'locale/app_tabs.pot' \
+  -x 'locale/POTFILES.in' \
+  -x 'locale/*/LC_MESSAGES/*.po'
