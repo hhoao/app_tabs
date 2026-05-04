@@ -69,6 +69,9 @@ export const PrefsStrings = {
     get onlyShowTabsOnCurrentWorkspace() {
         return _('Only show tabs on the current workspace');
     },
+    get showAddTabButton() {
+        return _('Show add tab button');
+    },
     get tabAppearanceJson() {
         return _('Tab appearance (JSON)');
     },

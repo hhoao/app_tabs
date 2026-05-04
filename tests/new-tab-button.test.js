@@ -91,7 +91,7 @@ test('TabControls can hide the add button and its divider together', () => {
 test('TabPanel hides the add button only when there are no retained windows', () => {
     let source = readSource('./src/TabPanel.js');
 
-    assert(source.includes('this._tab_controls.set_add_tab_visible(false);') &&
+    assert(source.includes('this._update_add_tab_visibility(false);') &&
         source.includes('if (!app)'),
         'expected add button to hide when there is no retained target application');
     assert(source.includes('windows.length > 0'),
@@ -100,4 +100,27 @@ test('TabPanel hides the add button only when there are no retained windows', ()
         'expected add button visibility not to depend on can_open_new_window timing');
     assert(source.includes('targetApp !== null && this._target_app !== targetApp'),
         'expected sync to keep previous app tabs when no application is focused');
+});
+
+test('add button visibility can be disabled from preferences', () => {
+    let schema = readSource('./schemas/org.gnome.shell.extensions.app_tabs.gschema.xml');
+    let constants = readSource('./src/config/SchemaKeyConstants.js');
+    let prefs = readSource('./prefs.js');
+    let tabPanel = readSource('./src/TabPanel.js');
+    let prefsStrings = readSource('./src/locale/PrefsStrings.js');
+
+    assert(schema.includes('<key name="show-add-tab-button" type="b">') &&
+        schema.includes('<default>true</default>'),
+        'expected schema to expose a default-on add button setting');
+    assert(constants.includes('SHOW_ADD_TAB_BUTTON: "show-add-tab-button"'),
+        'expected schema key constant for add button visibility');
+    assert(prefs.includes('get_show_add_tab_button_row') &&
+        prefs.includes('SchemaKeyConstants.SHOW_ADD_TAB_BUTTON'),
+        'expected preferences to bind a switch for add button visibility');
+    assert(prefsStrings.includes('showAddTabButton'),
+        'expected localized label for add button visibility');
+    assert(tabPanel.includes('this.show_add_tab_button =') &&
+        tabPanel.includes('_on_show_add_tab_button_changed') &&
+        tabPanel.includes('_update_add_tab_visibility(windows.length > 0)'),
+        'expected TabPanel to combine preference state with window availability');
 });

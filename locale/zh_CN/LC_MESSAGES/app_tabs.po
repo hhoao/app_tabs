@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 10:31+0800\n"
+"POT-Creation-Date: 2026-05-04 11:05+0800\n"
 "PO-Revision-Date: 2026-05-04 10:07+0800\n"
 "Last-Translator: \n"
 "Language-Team: Chinese (China)\n"
@@ -102,30 +102,34 @@ msgid "Only show tabs on the current workspace"
 msgstr "仅显示当前工作区的标签"
 
 #: src/locale/PrefsStrings.js:73
+msgid "Show add tab button"
+msgstr "显示添加标签按钮"
+
+#: src/locale/PrefsStrings.js:76
 msgid "Tab appearance (JSON)"
 msgstr "标签外观（JSON）"
 
-#: src/locale/PrefsStrings.js:76
+#: src/locale/PrefsStrings.js:79
 msgid "Edit the JSON used to style each application tab."
 msgstr "编辑用于设置每个应用标签样式的 JSON。"
 
-#: src/locale/PrefsStrings.js:79
+#: src/locale/PrefsStrings.js:82
 msgid "Apply"
 msgstr "应用"
 
-#: src/locale/PrefsStrings.js:82
+#: src/locale/PrefsStrings.js:85
 msgid "Format"
 msgstr "格式化"
 
-#: src/locale/PrefsStrings.js:85
+#: src/locale/PrefsStrings.js:88
 msgid "Revert"
 msgstr "撤销编辑"
 
-#: src/locale/PrefsStrings.js:88
+#: src/locale/PrefsStrings.js:91
 msgid "Restore defaults"
 msgstr "恢复默认"
 
-#: src/locale/PrefsStrings.js:91
+#: src/locale/PrefsStrings.js:94
 msgid "General"
 msgstr "常规"
 

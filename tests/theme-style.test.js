@@ -157,7 +157,7 @@ test('buildTabStyle adjusts vertical spacing from panel height', () => {
     });
 
     assert(compactStyle.includes('min-height:20px;'), 'compact panel should keep tabs compact');
-    assert(tallStyle.includes('min-height:34px;'), 'tall panel should grow tab hit area');
+    assert(tallStyle.includes('min-height:30px;'), 'tall panel should grow tab hit area');
 });
 
 test('buildDividerStyle adjusts separator margins from panel height', () => {
@@ -165,23 +165,23 @@ test('buildDividerStyle adjusts separator margins from panel height', () => {
     let tallStyle = buildDividerStyle(false, 44);
 
     assert(compactStyle.includes('margin-top:11px;'), 'compact panel separator should align to tab edge');
-    assert(tallStyle.includes('margin-top:13px;'), 'tall panel separator should align to tab edge');
+    assert(tallStyle.includes('margin-top:15px;'), 'tall panel separator should align to tab edge');
 });
 
 test('buildDividerStyle matches rounded tab vertical edge height', () => {
     let style = buildDividerStyle(false, 44);
 
-    assert(style.includes('height:18px;'), 'divider height should exclude rounded corners');
-    assert(style.includes('min-height:18px;'), 'divider min-height should exclude rounded corners');
+    assert(style.includes('height:14px;'), 'divider height should exclude rounded corners');
+    assert(style.includes('min-height:14px;'), 'divider min-height should exclude rounded corners');
 });
 
 test('buildAddButtonStyle supplies visible light and dark hover states', () => {
     let lightStyle = buildAddButtonStyle(false, true);
     let darkStyle = buildAddButtonStyle(true, true);
 
-    assert(lightStyle.includes('width:28px;') && lightStyle.includes('height:28px;'),
+    assert(lightStyle.includes('width:24px;') && lightStyle.includes('height:24px;'),
         'add button hover background should leave padding around the icon');
-    assert(lightStyle.includes('padding:2px;'),
+    assert(lightStyle.includes('padding:1px;'),
         'add button should have a little padding around the plus icon');
     assert(lightStyle.includes('border-radius:999px;'),
         'add button hover background should be rounded into a circle');

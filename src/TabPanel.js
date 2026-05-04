@@ -38,6 +38,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._scroll_view = this.get_horizontal_scroll_view();
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
+        this.show_add_tab_button = this._settings.get_boolean(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON);
 
         this._tab_controls = new TabControls({
             isDarkMode: this._is_dark_mode(),
@@ -94,6 +95,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this
         )
         this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON),
+            this._on_show_add_tab_button_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
             this.get_changed_key(SchemaKeyConstants.ELLIPSIZE_MODE),
             this._on_ellipsize_mode_changed.bind(this),
             this,
@@ -120,6 +126,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
         this.only_display_tabs_on_current_workspace = settings.get_boolean(key)
     }
+
+    _on_show_add_tab_button_changed(settings, key) {
+        this.show_add_tab_button = settings.get_boolean(key);
+        this._update_add_tab_visibility(this._current_tabs_count > 0);
+    }
+
     _on_panel_max_width_changed(settings, key) {
         this.set_panel_max_width(settings.get_int(key));
     }
@@ -216,6 +228,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             return;
 
         this._target_app.open_new_window(-1);
+    }
+
+    _update_add_tab_visibility(hasWindows) {
+        this._tab_controls.set_add_tab_visible(this.show_add_tab_button && hasWindows);
     }
 
     _on_ellipsize_mode_changed(settings, mode) {
@@ -403,7 +419,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = 0;
 
         if (!app) {
-            this._tab_controls.set_add_tab_visible(false);
+            this._update_add_tab_visibility(false);
             return;
         }
 
@@ -415,7 +431,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } else {
             windows = app.get_windows().filter(w => !w.skip_taskbar);
         }
-        this._tab_controls.set_add_tab_visible(windows.length > 0);
+        this._update_add_tab_visibility(windows.length > 0);
         let info = this._get_windows_info(windows);
         if (info[0].length > 0) {
             this._add_tabs_by_windows(app, info[0]);

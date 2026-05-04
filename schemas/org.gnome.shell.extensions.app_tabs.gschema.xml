@@ -7,6 +7,9 @@
         <key name="only-display-tabs-on-current-workspace" type="b">
             <default>true</default>
         </key>
+        <key name="show-add-tab-button" type="b">
+            <default>true</default>
+        </key>
         <key name="panel-max-width" type="i">
             <default>400</default>
         </key>

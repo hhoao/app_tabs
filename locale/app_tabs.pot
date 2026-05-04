@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 10:31+0800\n"
+"POT-Creation-Date: 2026-05-04 11:05+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -104,30 +104,34 @@ msgid "Only show tabs on the current workspace"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:73
-msgid "Tab appearance (JSON)"
+msgid "Show add tab button"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:76
-msgid "Edit the JSON used to style each application tab."
+msgid "Tab appearance (JSON)"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:79
-msgid "Apply"
+msgid "Edit the JSON used to style each application tab."
 msgstr ""
 
 #: src/locale/PrefsStrings.js:82
-msgid "Format"
+msgid "Apply"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:85
-msgid "Revert"
+msgid "Format"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:88
-msgid "Restore defaults"
+msgid "Revert"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:91
+msgid "Restore defaults"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:94
 msgid "General"
 msgstr ""
 
