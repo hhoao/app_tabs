@@ -4,6 +4,7 @@ set -euo pipefail
 repo_root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$repo_root"
 
+# locale: gettext .mo for UI languages; assets: prefs about page icon (see prefs.js).
 include_files=(
   src
   stylesheet.css
@@ -13,6 +14,8 @@ include_files=(
   LICENSE
   schemas
   icons
+  locale
+  assets
 )
 
 existing_files=()
