@@ -1,0 +1,194 @@
+# Chinese (Simplified) translations for app_tabs.
+# Copyright (C) 2026 hhoao
+# This file is distributed under the same license as the app_tabs package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: app_tabs\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-04 11:05+0800\n"
+"PO-Revision-Date: 2026-05-04 10:07+0800\n"
+"Last-Translator: \n"
+"Language-Team: Chinese (China)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/locale/PrefsStrings.js:8
+msgid "Application Tabs Dev"
+msgstr "Application Tabs 开发版"
+
+#: src/locale/PrefsStrings.js:11
+msgid "Maintained by hhoao"
+msgstr "由 hhoao 维护"
+
+#: src/locale/PrefsStrings.js:14
+msgid "Development build"
+msgstr "开发版本"
+
+#: src/locale/PrefsStrings.js:17
+msgid "Version"
+msgstr "版本"
+
+#: src/locale/PrefsStrings.js:20
+msgid "Release notes"
+msgstr "发行说明"
+
+#: src/locale/PrefsStrings.js:23
+msgid "Current release"
+msgstr "当前版本"
+
+#: src/locale/PrefsStrings.js:27
+msgid ""
+"Improved application tab experience, dedicated About page, and external "
+"links."
+msgstr "应用标签体验优化，新增独立关于页与外链入口。"
+
+#: src/locale/PrefsStrings.js:31
+msgid "Extension listing"
+msgstr "扩展页面"
+
+#: src/locale/PrefsStrings.js:34
+msgid "Application Tabs"
+msgstr "Application Tabs"
+
+#: src/locale/PrefsStrings.js:37
+msgid "Source code"
+msgstr "源代码"
+
+#: src/locale/PrefsStrings.js:40
+msgid "GitHub"
+msgstr "GitHub"
+
+#: src/locale/PrefsStrings.js:43
+msgid "Report an issue"
+msgstr "报告问题"
+
+#: src/locale/PrefsStrings.js:46
+msgid "Issues"
+msgstr "议题"
+
+#: src/locale/PrefsStrings.js:49
+msgid "Contributors"
+msgstr "贡献者"
+
+#: src/locale/PrefsStrings.js:52
+msgid "Contributor graph"
+msgstr "贡献者图表"
+
+#: src/locale/PrefsStrings.js:55
+msgid "About"
+msgstr "关于"
+
+#: src/locale/PrefsStrings.js:58
+msgid "Appearance"
+msgstr "外观"
+
+#: src/locale/PrefsStrings.js:61
+msgid "Configure how tabs look in the top bar."
+msgstr "配置扩展在顶栏中的标签显示样式。"
+
+#: src/locale/PrefsStrings.js:64
+msgid "Panel max width"
+msgstr "面板最大宽度"
+
+#: src/locale/PrefsStrings.js:67
+msgid "Enable ellipsis for tab labels"
+msgstr "为标签文字启用省略号"
+
+#: src/locale/PrefsStrings.js:70
+msgid "Only show tabs on the current workspace"
+msgstr "仅显示当前工作区的标签"
+
+#: src/locale/PrefsStrings.js:73
+msgid "Show add tab button"
+msgstr "显示添加标签按钮"
+
+#: src/locale/PrefsStrings.js:76
+msgid "Tab appearance (JSON)"
+msgstr "标签外观（JSON）"
+
+#: src/locale/PrefsStrings.js:79
+msgid "Edit the JSON used to style each application tab."
+msgstr "编辑用于设置每个应用标签样式的 JSON。"
+
+#: src/locale/PrefsStrings.js:82
+msgid "Apply"
+msgstr "应用"
+
+#: src/locale/PrefsStrings.js:85
+msgid "Format"
+msgstr "格式化"
+
+#: src/locale/PrefsStrings.js:88
+msgid "Revert"
+msgstr "撤销编辑"
+
+#: src/locale/PrefsStrings.js:91
+msgid "Restore defaults"
+msgstr "恢复默认"
+
+#: src/locale/PrefsStrings.js:94
+msgid "General"
+msgstr "常规"
+
+#: src/locale/AppTabMenuStrings.js:8
+msgid "Activate"
+msgstr "激活"
+
+#: src/locale/AppTabMenuStrings.js:11
+msgid "Hide"
+msgstr "隐藏"
+
+#: src/locale/AppTabMenuStrings.js:14
+msgid "Maximize"
+msgstr "最大化"
+
+#: src/locale/AppTabMenuStrings.js:17
+msgid "Unmaximize"
+msgstr "还原"
+
+#: src/locale/AppTabMenuStrings.js:20
+msgid "Pin"
+msgstr "置顶"
+
+#: src/locale/AppTabMenuStrings.js:23
+msgid "Unpin"
+msgstr "取消置顶"
+
+#: src/locale/AppTabMenuStrings.js:26
+msgid "Decorate"
+msgstr "显示标题栏"
+
+#: src/locale/AppTabMenuStrings.js:29
+msgid "Undecorate"
+msgstr "隐藏标题栏"
+
+#: src/locale/AppTabMenuStrings.js:32
+msgid "Move left ←"
+msgstr "向左移动 ←"
+
+#: src/locale/AppTabMenuStrings.js:35
+msgid "Move right →"
+msgstr "向右移动 →"
+
+#: src/locale/AppTabMenuStrings.js:38
+msgid "Copy process information"
+msgstr "复制进程信息"
+
+#: src/locale/AppTabMenuStrings.js:41
+msgid "Close other tabs"
+msgstr "关闭其他标签"
+
+#: src/locale/AppTabMenuStrings.js:44
+msgid "Close tabs to the right"
+msgstr "关闭右侧标签"
+
+#: src/locale/AppTabMenuStrings.js:47
+msgid "Close"
+msgstr "关闭"
+
+#: src/locale/AppTabMenuStrings.js:50
+msgid "Force kill (dangerous)"
+msgstr "强制结束（危险）"

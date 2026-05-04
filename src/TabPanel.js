@@ -38,6 +38,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._scroll_view = this.get_horizontal_scroll_view();
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
+        this.show_add_tab_button = this._settings.get_boolean(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON);
 
         this._tab_controls = new TabControls({
             isDarkMode: this._is_dark_mode(),
@@ -45,7 +46,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             onAddTab: this._open_new_tab_for_target_app.bind(this),
         });
         this._scroll_view.add_child(this._tab_controls.actor);
-        this.add_child(this._scroll_view);
+        this._tab_panel_container = new St.BoxLayout({ style_class: 'app-tabs-container' });
+        this._tab_panel_container.add_child(this._scroll_view);
+        this._tab_panel_container.add_child(this._tab_controls.get_add_tab_divider());
+        this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());
+        this.add_child(this._tab_panel_container);
         this._init_pool_tabs();
 
         Main.overview.connectObject(
@@ -90,6 +95,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this
         )
         this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON),
+            this._on_show_add_tab_button_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
             this.get_changed_key(SchemaKeyConstants.ELLIPSIZE_MODE),
             this._on_ellipsize_mode_changed.bind(this),
             this,
@@ -116,6 +126,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
         this.only_display_tabs_on_current_workspace = settings.get_boolean(key)
     }
+
+    _on_show_add_tab_button_changed(settings, key) {
+        this.show_add_tab_button = settings.get_boolean(key);
+        this._update_add_tab_visibility(this._current_tabs_count > 0);
+    }
+
     _on_panel_max_width_changed(settings, key) {
         this.set_panel_max_width(settings.get_int(key));
     }
@@ -214,6 +230,10 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._target_app.open_new_window(-1);
     }
 
+    _update_add_tab_visibility(hasWindows) {
+        this._tab_controls.set_add_tab_visible(this.show_add_tab_button && hasWindows);
+    }
+
     _on_ellipsize_mode_changed(settings, mode) {
         for (let tab of this._tabs_pool) {
             tab.switch_label_ellipsize_mode(settings.get_boolean(mode));
@@ -272,10 +292,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             tab.destroy();
         }
         this._tab_controls.destroy();
-        this._scroll_view.destroy();
+        this._tab_panel_container.destroy();
 
         this._menu_manager = null;
         this._scroll_view = null;
+        this._tab_panel_container = null;
         this._desktop_settings = null;
         this._settings = null;
         this._tabs_pool = null;
@@ -398,6 +419,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = 0;
 
         if (!app) {
+            this._update_add_tab_visibility(false);
             return;
         }
 
@@ -409,6 +431,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         } else {
             windows = app.get_windows().filter(w => !w.skip_taskbar);
         }
+        this._update_add_tab_visibility(windows.length > 0);
         let info = this._get_windows_info(windows);
         if (info[0].length > 0) {
             this._add_tabs_by_windows(app, info[0]);

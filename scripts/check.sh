@@ -9,7 +9,9 @@ package_name="${package_name%.zip}"
 package_path="${package_name}.zip"
 export TERM="${TERM:-xterm}"
 
-gjs -m tests/*
+while IFS= read -r -d '' test_file; do
+  gjs -m "$test_file"
+done < <(find tests -type f -name '*.test.js' -print0)
 while IFS= read -r -d '' js_file; do
   node --check "$js_file"
 done < <(find extension.js prefs.js src tests -type f -name '*.js' -print0)

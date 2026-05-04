@@ -1,0 +1,196 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR hhoao
+# This file is distributed under the same license as the app_tabs package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: app_tabs 1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-04 11:05+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/locale/PrefsStrings.js:8
+msgid "Application Tabs Dev"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:11
+msgid "Maintained by hhoao"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:14
+msgid "Development build"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:17
+msgid "Version"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:20
+msgid "Release notes"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:23
+msgid "Current release"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:27
+msgid ""
+"Improved application tab experience, dedicated About page, and external "
+"links."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:31
+msgid "Extension listing"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:34
+msgid "Application Tabs"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:37
+msgid "Source code"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:40
+msgid "GitHub"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:43
+msgid "Report an issue"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:46
+msgid "Issues"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:49
+msgid "Contributors"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:52
+msgid "Contributor graph"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:55
+msgid "About"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:58
+msgid "Appearance"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:61
+msgid "Configure how tabs look in the top bar."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:64
+msgid "Panel max width"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:67
+msgid "Enable ellipsis for tab labels"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:70
+msgid "Only show tabs on the current workspace"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:73
+msgid "Show add tab button"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:76
+msgid "Tab appearance (JSON)"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:79
+msgid "Edit the JSON used to style each application tab."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:82
+msgid "Apply"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:85
+msgid "Format"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:88
+msgid "Revert"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:91
+msgid "Restore defaults"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:94
+msgid "General"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:8
+msgid "Activate"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:11
+msgid "Hide"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:14
+msgid "Maximize"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:17
+msgid "Unmaximize"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:20
+msgid "Pin"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:23
+msgid "Unpin"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:26
+msgid "Decorate"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:29
+msgid "Undecorate"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:32
+msgid "Move left ←"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:35
+msgid "Move right →"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:38
+msgid "Copy process information"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:41
+msgid "Close other tabs"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:44
+msgid "Close tabs to the right"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:47
+msgid "Close"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:50
+msgid "Force kill (dangerous)"
+msgstr ""
