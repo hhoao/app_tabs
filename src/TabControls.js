@@ -14,6 +14,7 @@ export class TabControls {
         this._drag_placeholder = null;
         this._is_dark_mode = isDarkMode;
         this._panel_height = panelHeight;
+        this._add_tab_divider = this._create_divider();
         this._is_add_button_hover = false;
         this._on_add_tab = onAddTab ?? (() => {});
         this._add_tab_button = this._create_add_tab_button();
@@ -26,6 +27,7 @@ export class TabControls {
         this._tabs = null;
         this._tab_divider_pool = null;
         this._drag_placeholder = null;
+        this._add_tab_divider = null;
         this._is_add_button_hover = false;
         this._on_add_tab = null;
         this._add_tab_button = null;
@@ -100,6 +102,9 @@ export class TabControls {
             return -1;
 
         let placeholder_index = this.actor.get_children().indexOf(this._drag_placeholder);
+        if (placeholder_index === this.actor.get_children().length - 1)
+            return this._tabs.length;
+
         return Math.max(0, Math.floor((placeholder_index - 1) / 2));
     }
 
@@ -124,15 +129,20 @@ export class TabControls {
         ]);
 
         this._tab_divider_pool.forEach((divider, index) => {
-            if (divider_visibility[index])
+            if (index < this._tabs.length && divider_visibility[index])
                 divider.show();
             else
                 divider.hide();
         });
+
+        if (divider_visibility[this._tabs.length])
+            this._add_tab_divider.show();
+        else
+            this._add_tab_divider.hide();
     }
 
     _ensure_divider_count() {
-        while (this._tab_divider_pool.length < this._tabs.length + 2)
+        while (this._tab_divider_pool.length < this._tabs.length)
             this._tab_divider_pool.push(this._create_divider());
     }
 
@@ -167,10 +177,19 @@ export class TabControls {
         return button;
     }
 
+    get_add_tab_button() {
+        return this._add_tab_button;
+    }
+
+    get_add_tab_divider() {
+        return this._add_tab_divider;
+    }
+
     _apply_divider_styles() {
         let style = this._get_divider_style();
         for (let divider of this._tab_divider_pool)
             divider.set_style(style);
+        this._add_tab_divider.set_style(style);
     }
 
     _get_divider_style() {
@@ -193,8 +212,5 @@ export class TabControls {
             this.actor.add_child(this._tab_divider_pool[i]);
             this.actor.add_child(this._tabs[i]);
         }
-        this.actor.add_child(this._tab_divider_pool[this._tabs.length]);
-        this.actor.add_child(this._add_tab_button);
-        this.actor.add_child(this._tab_divider_pool[this._tabs.length + 1]);
     }
 }

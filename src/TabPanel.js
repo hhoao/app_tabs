@@ -45,7 +45,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             onAddTab: this._open_new_tab_for_target_app.bind(this),
         });
         this._scroll_view.add_child(this._tab_controls.actor);
-        this.add_child(this._scroll_view);
+        this._tab_panel_container = new St.BoxLayout({ style_class: 'app-tabs-container' });
+        this._tab_panel_container.add_child(this._scroll_view);
+        this._tab_panel_container.add_child(this._tab_controls.get_add_tab_divider());
+        this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());
+        this.add_child(this._tab_panel_container);
         this._init_pool_tabs();
 
         Main.overview.connectObject(
@@ -272,10 +276,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             tab.destroy();
         }
         this._tab_controls.destroy();
-        this._scroll_view.destroy();
+        this._tab_panel_container.destroy();
 
         this._menu_manager = null;
         this._scroll_view = null;
+        this._tab_panel_container = null;
         this._desktop_settings = null;
         this._settings = null;
         this._tabs_pool = null;
