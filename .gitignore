@@ -2,3 +2,4 @@
 .worktrees/
 schemas/gschemas.compiled
 venv
+*.po~

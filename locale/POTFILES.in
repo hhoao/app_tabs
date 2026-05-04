@@ -1,0 +1,4 @@
+# Paths relative to extension root (parent of locale/). 或运行:
+#   ./scripts/update-translations.sh
+src/locale/PrefsStrings.js
+src/locale/AppTabMenuStrings.js

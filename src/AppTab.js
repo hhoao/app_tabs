@@ -13,6 +13,7 @@ import {
     buildTabStyle,
     isDarkTheme,
 } from './utils/ThemeStyle.js';
+import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
 
 export const AppTab = GObject.registerClass({
     Signals: {
@@ -177,7 +178,7 @@ export const AppTab = GObject.registerClass({
 
     _init_label() {
         this._label = new St.Label({
-            text: 'label',
+            text: '',
             y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.FILL,
         });
@@ -287,21 +288,21 @@ export const AppTab = GObject.registerClass({
         Main.uiGroup.add_child(this._menu.actor);
         this._menu.actor.hide();
 
-        const showMenuItem = new PopupMenu.PopupMenuItem('Activate');
+        const showMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.activate);
         showMenuItem.connect('activate', () => {
             this.get_current_window().activate(0);
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(showMenuItem);
 
-        const minimizeMenuItem = new PopupMenu.PopupMenuItem('Hide');
+        const minimizeMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.hide);
         minimizeMenuItem.connect('activate', () => {
             this.get_current_window().minimize();
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(minimizeMenuItem);
 
-        const maximizeToggleMenuItem = new PopupMenu.PopupMenuItem('Maximize');
+        const maximizeToggleMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.maximize);
         maximizeToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             if (!win) return Clutter.EVENT_PROPAGATE;
@@ -315,7 +316,7 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(maximizeToggleMenuItem);
 
-        const pinToggleMenuItem = new PopupMenu.PopupMenuItem('Pin');
+        const pinToggleMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.pin);
         pinToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             if (!win) return Clutter.EVENT_PROPAGATE;
@@ -329,7 +330,7 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(pinToggleMenuItem);
 
-        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem('Decorate');
+        const decorateToggleMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.decorate);
         decorateToggleMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             if (!win) return Clutter.EVENT_PROPAGATE;
@@ -351,14 +352,14 @@ export const AppTab = GObject.registerClass({
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        const moveLeftMenuItem = new PopupMenu.PopupMenuItem('Move Left ←');
+        const moveLeftMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.moveLeft);
         moveLeftMenuItem.connect('activate', () => {
             this._move_tab_left();
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(moveLeftMenuItem);
 
-        const moveRightMenuItem = new PopupMenu.PopupMenuItem('Move Right →');
+        const moveRightMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.moveRight);
         moveRightMenuItem.connect('activate', () => {
             this._move_tab_right();
             return Clutter.EVENT_PROPAGATE;
@@ -367,7 +368,7 @@ export const AppTab = GObject.registerClass({
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        const getProcInfoMenuItem = new PopupMenu.PopupMenuItem('Get process information');
+        const getProcInfoMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.copyProcessInformation);
         getProcInfoMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             if (!win) return Clutter.EVENT_PROPAGATE;
@@ -379,28 +380,28 @@ export const AppTab = GObject.registerClass({
         });
         this._menu.addMenuItem(getProcInfoMenuItem);
 
-        const closeOtherTabsMenuItem = new PopupMenu.PopupMenuItem('Close other tabs');
+        const closeOtherTabsMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.closeOtherTabs);
         closeOtherTabsMenuItem.connect('activate', () => {
             this.emit('close-other-tabs');
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(closeOtherTabsMenuItem);
 
-        const closeTabsToTheRightMenuItem = new PopupMenu.PopupMenuItem('Close tabs to the right');
+        const closeTabsToTheRightMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.closeTabsToTheRight);
         closeTabsToTheRightMenuItem.connect('activate', () => {
             this.emit('close-tabs-to-the-right');
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(closeTabsToTheRightMenuItem);
 
-        const closeMenuItem = new PopupMenu.PopupMenuItem('Close');
+        const closeMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.close);
         closeMenuItem.connect('activate', () => {
             this.get_current_window().delete(global.get_current_time());
             return Clutter.EVENT_PROPAGATE;
         });
         this._menu.addMenuItem(closeMenuItem);
 
-        const forceKillMenuItem = new PopupMenu.PopupMenuItem('Force kill (Warning!!)');
+        const forceKillMenuItem = new PopupMenu.PopupMenuItem(AppTabMenuStrings.forceKillDangerous);
         forceKillMenuItem.connect('activate', () => {
             const win = this.get_current_window();
             if (!win) return Clutter.EVENT_PROPAGATE;
@@ -426,10 +427,10 @@ export const AppTab = GObject.registerClass({
             if (!isOpen) return;
             const win = this.get_current_window();
             if (!win) return;
-            pinToggleMenuItem.label.set_text(win.is_above() ? 'Unpin' : 'Pin');
-            maximizeToggleMenuItem.label.set_text(win.is_maximized() ? 'Unmaximize' : 'Maximize');
+            pinToggleMenuItem.label.set_text(win.is_above() ? AppTabMenuStrings.unpin : AppTabMenuStrings.pin);
+            maximizeToggleMenuItem.label.set_text(win.is_maximized() ? AppTabMenuStrings.unmaximize : AppTabMenuStrings.maximize);
             maximizeToggleMenuItem.setSensitive(win.is_maximized() || win.can_maximize());
-            decorateToggleMenuItem.label.set_text(win.decorated ? 'Undecorate' : 'Decorate');
+            decorateToggleMenuItem.label.set_text(win.decorated ? AppTabMenuStrings.undecorate : AppTabMenuStrings.decorate);
         });
         this._menu_manager.addMenu(this._menu);
 
