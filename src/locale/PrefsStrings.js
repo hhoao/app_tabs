@@ -96,4 +96,16 @@ export const PrefsStrings = {
     get general() {
         return _('General');
     },
+    get displayMode() {
+        return _('Default display mode');
+    },
+    get displayModePanel() {
+        return _('Panel');
+    },
+    get displayModeStandalone() {
+        return _('Standalone');
+    },
+    get hideTopbarInStandalone() {
+        return _('Hide top bar in standalone mode');
+    },
 };
