@@ -776,6 +776,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._floating_bar)
             return;
 
+        let statusArea = Main.panel.statusArea;
+        let children = Object.keys(statusArea);
+        this._saved_panel_index = children.indexOf('AppTabs');
+
+        if (this.get_parent())
+            this.get_parent().remove_child(this);
+
         this._floating_bar = new FloatingBar({
             tabPanel: this,
             settings: this._settings,
@@ -861,6 +868,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (shouldHide && Main.panel.visible) {
             Main.panel.hide();
             this._topbar_was_hidden = true;
+        } else if (!shouldHide && this._topbar_was_hidden) {
+            Main.panel.show();
+            this._topbar_was_hidden = false;
         }
     }
 
@@ -939,6 +949,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._recent_windows_state = null;
         this._tab_controls = null;
         if (this._floating_bar) {
+            this._floating_bar.detach();
             this._floating_bar.destroy();
             this._floating_bar = null;
         }
