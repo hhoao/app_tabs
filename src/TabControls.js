@@ -7,7 +7,7 @@ import {
 } from './utils/ThemeStyle.js';
 
 export class TabControls {
-    constructor({ isDarkMode, panelHeight, onAddTab = null, onShowRecentWindows = null }) {
+    constructor({ isDarkMode, panelHeight, onAddTab = null, onShowRecentWindows = null, onToggleDisplayMode = null }) {
         this.actor = new St.BoxLayout({ style_class: 'app-tabs-box' });
         this._tabs = [];
         this._tab_divider_pool = [];
@@ -25,7 +25,43 @@ export class TabControls {
         this._on_add_tab = onAddTab ?? (() => {});
         this._add_tab_button = this._create_add_tab_button();
         this.set_add_tab_visible(false);
+        this._on_toggle_display_mode = onToggleDisplayMode ?? (() => {});
+        this._display_mode_toggle_button = this._create_display_mode_toggle_button();
         this._ensure_divider_count();
+    }
+
+    get_display_mode_toggle_button() {
+        return this._display_mode_toggle_button;
+    }
+
+    set_display_mode_icon(mode) {
+        let icon = this._display_mode_toggle_button?.get_first_child();
+        if (!icon)
+            return;
+        if (mode === 'standalone')
+            icon.set_icon_name('view-restore-symbolic');
+        else
+            icon.set_icon_name('view-fullscreen-symbolic');
+    }
+
+    _create_display_mode_toggle_button() {
+        let icon = new St.Icon({
+            icon_name: 'view-fullscreen-symbolic',
+            icon_size: 16,
+        });
+        let button = new St.Button({
+            y_align: Clutter.ActorAlign.CENTER,
+            child: icon,
+        });
+        button.add_style_class_name('app-tabs-display-mode-button');
+        button.connect('clicked', () => {
+            this._on_toggle_display_mode?.();
+        });
+        button.connect('notify::hover', () => {
+            this._apply_add_button_style();
+        });
+        button.set_style(this._get_add_button_style());
+        return button;
     }
 
     destroy() {
@@ -44,6 +80,8 @@ export class TabControls {
         this._is_add_button_hover = false;
         this._on_add_tab = null;
         this._add_tab_button = null;
+        this._display_mode_toggle_button = null;
+        this._on_toggle_display_mode = null;
     }
 
     set_theme({ isDarkMode, panelHeight }) {
