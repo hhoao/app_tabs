@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 11:05+0800\n"
+"POT-Creation-Date: 2026-05-06 09:48+0800\n"
 "PO-Revision-Date: 2026-05-04 10:07+0800\n"
 "Last-Translator: \n"
 "Language-Team: Chinese (China)\n"
@@ -106,30 +106,34 @@ msgid "Show add tab button"
 msgstr "显示添加标签按钮"
 
 #: src/locale/PrefsStrings.js:76
+msgid "Show recent windows menu"
+msgstr "显示最近窗口菜单"
+
+#: src/locale/PrefsStrings.js:79
 msgid "Tab appearance (JSON)"
 msgstr "标签外观（JSON）"
 
-#: src/locale/PrefsStrings.js:79
+#: src/locale/PrefsStrings.js:82
 msgid "Edit the JSON used to style each application tab."
 msgstr "编辑用于设置每个应用标签样式的 JSON。"
 
-#: src/locale/PrefsStrings.js:82
+#: src/locale/PrefsStrings.js:85
 msgid "Apply"
 msgstr "应用"
 
-#: src/locale/PrefsStrings.js:85
+#: src/locale/PrefsStrings.js:88
 msgid "Format"
 msgstr "格式化"
 
-#: src/locale/PrefsStrings.js:88
+#: src/locale/PrefsStrings.js:91
 msgid "Revert"
 msgstr "撤销编辑"
 
-#: src/locale/PrefsStrings.js:91
+#: src/locale/PrefsStrings.js:94
 msgid "Restore defaults"
 msgstr "恢复默认"
 
-#: src/locale/PrefsStrings.js:94
+#: src/locale/PrefsStrings.js:97
 msgid "General"
 msgstr "常规"
 
@@ -192,3 +196,43 @@ msgstr "关闭"
 #: src/locale/AppTabMenuStrings.js:50
 msgid "Force kill (dangerous)"
 msgstr "强制结束（危险）"
+
+#: src/locale/AppTabMenuStrings.js:53
+msgid "Current application windows"
+msgstr "当前应用窗口"
+
+#: src/locale/AppTabMenuStrings.js:56
+msgid "Current all applications windows"
+msgstr "当前全部应用窗口"
+
+#: src/locale/AppTabMenuStrings.js:59
+msgid "No current windows"
+msgstr "没有当前窗口"
+
+#: src/locale/AppTabMenuStrings.js:62
+msgid "Recently closed windows"
+msgstr "最近关闭的窗口"
+
+#: src/locale/AppTabMenuStrings.js:65
+msgid "No recently closed windows"
+msgstr "没有最近关闭的窗口"
+
+#: src/locale/AppTabMenuStrings.js:68
+msgid "Untitled window"
+msgstr "未命名窗口"
+
+#: src/locale/AppTabMenuStrings.js:71
+msgid "just now"
+msgstr "刚刚"
+
+#: src/locale/AppTabMenuStrings.js:74
+msgid "m ago"
+msgstr " 分钟前"
+
+#: src/locale/AppTabMenuStrings.js:77
+msgid "h ago"
+msgstr " 小时前"
+
+#: src/locale/AppTabMenuStrings.js:80
+msgid "d ago"
+msgstr " 天前"

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 11:05+0800\n"
+"POT-Creation-Date: 2026-05-06 09:48+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -108,30 +108,34 @@ msgid "Show add tab button"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:76
-msgid "Tab appearance (JSON)"
+msgid "Show recent windows menu"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:79
-msgid "Edit the JSON used to style each application tab."
+msgid "Tab appearance (JSON)"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:82
-msgid "Apply"
+msgid "Edit the JSON used to style each application tab."
 msgstr ""
 
 #: src/locale/PrefsStrings.js:85
-msgid "Format"
+msgid "Apply"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:88
-msgid "Revert"
+msgid "Format"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:91
-msgid "Restore defaults"
+msgid "Revert"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:94
+msgid "Restore defaults"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:97
 msgid "General"
 msgstr ""
 
@@ -193,4 +197,44 @@ msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:50
 msgid "Force kill (dangerous)"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:53
+msgid "Current application windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:56
+msgid "Current all applications windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:59
+msgid "No current windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:62
+msgid "Recently closed windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:65
+msgid "No recently closed windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:68
+msgid "Untitled window"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:71
+msgid "just now"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:74
+msgid "m ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:77
+msgid "h ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:80
+msgid "d ago"
 msgstr ""

@@ -10,6 +10,9 @@
         <key name="show-add-tab-button" type="b">
             <default>true</default>
         </key>
+        <key name="show-recent-windows-menu" type="b">
+            <default>true</default>
+        </key>
         <key name="panel-max-width" type="i">
             <default>400</default>
         </key>
@@ -46,6 +49,9 @@
         </key>
         <key name="tabs-order" type="s">
             <default>"{}"</default>
+        </key>
+        <key name="recent-windows-state" type="s">
+            <default>'{"opened":[],"closed":[]}'</default>
         </key>
     </schema>
 </schemalist>

@@ -167,10 +167,12 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         const ellipsize_mode_switch = this.get_ellipsize_mode_row(settings);
         const only_display_current_workspace_tabs_switch = this.get_only_display_current_workspace_row(settings);
         const show_add_tab_button_switch = this.get_show_add_tab_button_row(settings);
+        const show_recent_windows_menu_switch = this.get_show_recent_windows_menu_row(settings);
         const max_width_row = this.get_max_width_row(settings);
         group.add(max_width_row);
         group.add(ellipsize_mode_switch);
         group.add(only_display_current_workspace_tabs_switch);
+        group.add(show_recent_windows_menu_switch);
         group.add(show_add_tab_button_switch);
         return group;
     }
@@ -225,6 +227,22 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
 
         const action_row = new Adw.ActionRow({
             title: PrefsStrings.showAddTabButton,
+        });
+        action_row.add_suffix(gtk_switch);
+        action_row.activatable_widget = gtk_switch;
+        return action_row;
+    };
+
+    get_show_recent_windows_menu_row = (settings) => {
+        const key_name = SchemaKeyConstants.SHOW_RECENT_WINDOWS_MENU;
+        const gtk_switch = new Gtk.Switch({
+            active: true,
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(key_name, gtk_switch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const action_row = new Adw.ActionRow({
+            title: PrefsStrings.showRecentWindowsMenu,
         });
         action_row.add_suffix(gtk_switch);
         action_row.activatable_widget = gtk_switch;

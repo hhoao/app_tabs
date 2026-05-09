@@ -72,6 +72,9 @@ export const PrefsStrings = {
     get showAddTabButton() {
         return _('Show add tab button');
     },
+    get showRecentWindowsMenu() {
+        return _('Show recent windows menu');
+    },
     get tabAppearanceJson() {
         return _('Tab appearance (JSON)');
     },

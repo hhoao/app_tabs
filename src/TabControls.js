@@ -7,13 +7,18 @@ import {
 } from './utils/ThemeStyle.js';
 
 export class TabControls {
-    constructor({ isDarkMode, panelHeight, onAddTab = null }) {
+    constructor({ isDarkMode, panelHeight, onAddTab = null, onShowRecentWindows = null }) {
         this.actor = new St.BoxLayout({ style_class: 'app-tabs-box' });
         this._tabs = [];
         this._tab_divider_pool = [];
         this._drag_placeholder = null;
         this._is_dark_mode = isDarkMode;
         this._panel_height = panelHeight;
+        this._recent_windows_divider = this._create_divider();
+        this._is_recent_windows_visible = true;
+        this._is_recent_windows_button_hover = false;
+        this._on_show_recent_windows = onShowRecentWindows ?? (() => {});
+        this._recent_windows_button = this._create_recent_windows_button();
         this._add_tab_divider = this._create_divider();
         this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
@@ -29,6 +34,11 @@ export class TabControls {
         this._tabs = null;
         this._tab_divider_pool = null;
         this._drag_placeholder = null;
+        this._recent_windows_divider = null;
+        this._is_recent_windows_visible = false;
+        this._is_recent_windows_button_hover = false;
+        this._on_show_recent_windows = null;
+        this._recent_windows_button = null;
         this._add_tab_divider = null;
         this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
@@ -40,6 +50,7 @@ export class TabControls {
         this._is_dark_mode = isDarkMode;
         this._panel_height = panelHeight;
         this._apply_divider_styles();
+        this._apply_recent_windows_button_style();
         this._apply_add_button_style();
     }
 
@@ -129,6 +140,7 @@ export class TabControls {
         let divider_visibility = getDividerVisibility([
             ...this._tabs.map(tab => tab.is_focused()),
             false,
+            false,
         ]);
 
         this._tab_divider_pool.forEach((divider, index) => {
@@ -138,7 +150,12 @@ export class TabControls {
                 divider.hide();
         });
 
-        if (this._is_add_tab_visible && divider_visibility[this._tabs.length])
+        if (this._is_recent_windows_visible && divider_visibility[this._tabs.length])
+            this._recent_windows_divider.show();
+        else
+            this._recent_windows_divider.hide();
+
+        if (this._is_add_tab_visible && divider_visibility[this._tabs.length + 1])
             this._add_tab_divider.show();
         else
             this._add_tab_divider.hide();
@@ -157,6 +174,27 @@ export class TabControls {
         divider.set_style(this._get_divider_style());
         divider.hide();
         return divider;
+    }
+
+    _create_recent_windows_button() {
+        let icon = new St.Icon({
+            icon_name: 'pan-down-symbolic',
+            icon_size: 16,
+        });
+        let button = new St.Button({
+            y_align: Clutter.ActorAlign.CENTER,
+            child: icon,
+        });
+        button.add_style_class_name('app-tabs-recent-windows-button');
+        button.connect('clicked', () => {
+            this._on_show_recent_windows?.();
+        });
+        button.connect('notify::hover', () => {
+            this._is_recent_windows_button_hover = button.hover;
+            this._apply_recent_windows_button_style();
+        });
+        button.set_style(this._get_recent_windows_button_style());
+        return button;
     }
 
     _create_add_tab_button() {
@@ -184,8 +222,25 @@ export class TabControls {
         return this._add_tab_button;
     }
 
+    get_recent_windows_button() {
+        return this._recent_windows_button;
+    }
+
     get_add_tab_divider() {
         return this._add_tab_divider;
+    }
+
+    get_recent_windows_divider() {
+        return this._recent_windows_divider;
+    }
+
+    set_recent_windows_visible(isVisible) {
+        this._is_recent_windows_visible = isVisible;
+        if (isVisible)
+            this._recent_windows_button.show();
+        else
+            this._recent_windows_button.hide();
+        this.refresh_active_state();
     }
 
     set_add_tab_visible(isVisible) {
@@ -201,6 +256,7 @@ export class TabControls {
         let style = this._get_divider_style();
         for (let divider of this._tab_divider_pool)
             divider.set_style(style);
+        this._recent_windows_divider.set_style(style);
         this._add_tab_divider.set_style(style);
     }
 
@@ -212,8 +268,16 @@ export class TabControls {
         this._add_tab_button?.set_style(this._get_add_button_style());
     }
 
+    _apply_recent_windows_button_style() {
+        this._recent_windows_button?.set_style(this._get_recent_windows_button_style());
+    }
+
     _get_add_button_style() {
         return buildAddButtonStyle(this._is_dark_mode, this._is_add_button_hover);
+    }
+
+    _get_recent_windows_button_style() {
+        return buildAddButtonStyle(this._is_dark_mode, this._is_recent_windows_button_hover);
     }
 
     _layout() {

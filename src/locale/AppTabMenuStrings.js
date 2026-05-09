@@ -49,4 +49,34 @@ export const AppTabMenuStrings = {
     get forceKillDangerous() {
         return _('Force kill (dangerous)');
     },
+    get currentApplicationWindows() {
+        return _('Current application windows');
+    },
+    get currentAllApplicationsWindows() {
+        return _('Current all applications windows');
+    },
+    get noCurrentWindows() {
+        return _('No current windows');
+    },
+    get recentlyClosedWindows() {
+        return _('Recently closed windows');
+    },
+    get noRecentlyClosedWindows() {
+        return _('No recently closed windows');
+    },
+    get untitledWindow() {
+        return _('Untitled window');
+    },
+    get justNow() {
+        return _('just now');
+    },
+    get minuteSuffix() {
+        return _('m ago');
+    },
+    get hourSuffix() {
+        return _('h ago');
+    },
+    get daySuffix() {
+        return _('d ago');
+    },
 };

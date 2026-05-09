@@ -3,8 +3,10 @@ export const SchemaKeyConstants = {
     ELLIPSIZE_MODE: "ellipsize-mode",
     ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE: "only-display-tabs-on-current-workspace",
     SHOW_ADD_TAB_BUTTON: "show-add-tab-button",
+    SHOW_RECENT_WINDOWS_MENU: "show-recent-windows-menu",
     APP_TAB_CONFIG: "app-tab-config",
     GTK_THEME: "gtk-theme",
     COLOR_SCHEME: "color-scheme",
     TABS_ORDER: "tabs-order",
+    RECENT_WINDOWS_STATE: "recent-windows-state",
 }
