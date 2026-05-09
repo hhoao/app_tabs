@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR hhoao
-# This file is distributed under the same license as the app_tabs package.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Application Tabs Dev package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: app_tabs 1\n"
+"Project-Id-Version: Application Tabs Dev\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-06 09:48+0800\n"
+"POT-Creation-Date: 2026-05-10 00:53+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -137,6 +137,22 @@ msgstr ""
 
 #: src/locale/PrefsStrings.js:97
 msgid "General"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:100
+msgid "Default display mode"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:103
+msgid "Panel"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:106
+msgid "Standalone"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:109
+msgid "Hide top bar in standalone mode"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:8

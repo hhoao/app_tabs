@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-06 09:48+0800\n"
+"POT-Creation-Date: 2026-05-10 00:53+0800\n"
 "PO-Revision-Date: 2026-05-04 10:07+0800\n"
 "Last-Translator: \n"
 "Language-Team: Chinese (China)\n"
@@ -136,6 +136,22 @@ msgstr "恢复默认"
 #: src/locale/PrefsStrings.js:97
 msgid "General"
 msgstr "常规"
+
+#: src/locale/PrefsStrings.js:100
+msgid "Default display mode"
+msgstr "默认显示模式"
+
+#: src/locale/PrefsStrings.js:103
+msgid "Panel"
+msgstr "面板"
+
+#: src/locale/PrefsStrings.js:106
+msgid "Standalone"
+msgstr "独立"
+
+#: src/locale/PrefsStrings.js:109
+msgid "Hide top bar in standalone mode"
+msgstr "独立模式下隐藏顶栏"
 
 #: src/locale/AppTabMenuStrings.js:8
 msgid "Activate"
