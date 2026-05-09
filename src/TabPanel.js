@@ -779,6 +779,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         let statusArea = Main.panel.statusArea;
         let children = Object.keys(statusArea);
         this._saved_panel_index = children.indexOf('AppTabs');
+        if (this._saved_panel_index === -1)
+            this._saved_panel_index = this._config.index ?? 10;
 
         if (this.get_parent())
             this.get_parent().remove_child(this);
