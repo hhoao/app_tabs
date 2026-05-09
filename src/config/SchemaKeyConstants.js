@@ -9,4 +9,7 @@ export const SchemaKeyConstants = {
     COLOR_SCHEME: "color-scheme",
     TABS_ORDER: "tabs-order",
     RECENT_WINDOWS_STATE: "recent-windows-state",
+    DISPLAY_MODE: "display-mode",
+    HIDE_TOPBAR_IN_STANDALONE: "hide-topbar-in-standalone",
+    STANDALONE_BAR_POSITION: "standalone-bar-position",
 }
