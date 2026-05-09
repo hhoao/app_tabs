@@ -23,6 +23,7 @@ import {
     getProcessLaunchContext,
     shouldUseCommandForRestore,
 } from './utils/ProcessLaunchContext.js';
+import { FloatingBar } from './FloatingBar.js';
 import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
 
 const RECENT_WINDOWS_MENU_MAX_HEIGHT = 520;
@@ -59,12 +60,17 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
         this.show_add_tab_button = this._settings.get_boolean(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON);
         this.show_recent_windows_menu = this._settings.get_boolean(SchemaKeyConstants.SHOW_RECENT_WINDOWS_MENU);
+        this._display_mode = this._settings.get_string(SchemaKeyConstants.DISPLAY_MODE);
+        this._saved_panel_index = 0;
+        this._floating_bar = null;
+        this._topbar_was_hidden = false;
 
         this._tab_controls = new TabControls({
             isDarkMode: this._is_dark_mode(),
             panelHeight: this._get_panel_height(),
             onAddTab: this._open_new_tab_for_target_app.bind(this),
             onShowRecentWindows: this._toggle_recent_windows_menu.bind(this),
+            onToggleDisplayMode: this.toggle_display_mode.bind(this),
         });
         this._scroll_view.add_child(this._tab_controls.actor);
         this._tab_panel_container = new St.BoxLayout({ style_class: 'app-tabs-container' });
@@ -73,6 +79,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_panel_container.add_child(this._scroll_view);
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_divider());
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());
+        this._tab_panel_container.add_child(this._tab_controls.get_display_mode_toggle_button());
         this.add_child(this._tab_panel_container);
         this._init_pool_tabs();
         this._init_recent_windows_menu();
@@ -103,6 +110,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         Main.layoutManager.connectObject('startup-complete', this._on_shell_startup.bind(this), this);
 
         this._listen_settings();
+
+        if (this._display_mode === 'standalone')
+            this._init_standalone_display();
     }
 
     get_changed_key(key) {
@@ -152,6 +162,16 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 this,
             );
         }
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.DISPLAY_MODE),
+            this._on_display_mode_setting_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE),
+            this._on_hide_topbar_setting_changed.bind(this),
+            this,
+        );
     }
 
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
@@ -752,6 +772,114 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         }
     }
 
+    _init_standalone_display() {
+        if (this._floating_bar)
+            return;
+
+        this._floating_bar = new FloatingBar({
+            tabPanel: this,
+            settings: this._settings,
+        });
+        if (this._tab_panel_container.get_parent())
+            this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
+        this._floating_bar.add_child(this._tab_panel_container);
+        this._floating_bar.attach();
+        this.hide();
+        this._tab_controls.set_display_mode_icon('standalone');
+        this._apply_topbar_visibility(true);
+    }
+
+    toggle_display_mode() {
+        if (this._display_mode === 'panel') {
+            this._enter_standalone_mode();
+        } else {
+            this._enter_panel_mode();
+        }
+    }
+
+    _enter_standalone_mode() {
+        if (this._display_mode === 'standalone')
+            return;
+
+        this._display_mode = 'standalone';
+        this._settings.set_string(SchemaKeyConstants.DISPLAY_MODE, 'standalone');
+
+        let statusArea = Main.panel.statusArea;
+        let children = Object.keys(statusArea);
+        this._saved_panel_index = children.indexOf('AppTabs');
+
+        if (this.get_parent())
+            this.get_parent().remove_child(this);
+
+        this._floating_bar = new FloatingBar({
+            tabPanel: this,
+            settings: this._settings,
+        });
+        if (this._tab_panel_container.get_parent())
+            this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
+        this._floating_bar.add_child(this._tab_panel_container);
+        this._floating_bar.attach();
+        this.hide();
+        this._tab_controls.set_display_mode_icon('standalone');
+        this._apply_topbar_visibility(true);
+    }
+
+    _enter_panel_mode() {
+        if (this._display_mode === 'panel')
+            return;
+
+        this._display_mode = 'panel';
+        this._settings.set_string(SchemaKeyConstants.DISPLAY_MODE, 'panel');
+
+        this._apply_topbar_visibility(false);
+
+        if (this._floating_bar) {
+            let container = this._tab_panel_container;
+            if (container.get_parent())
+                container.get_parent().remove_child(container);
+            this._floating_bar.detach();
+            this._floating_bar.destroy();
+            this._floating_bar = null;
+            this.add_child(container);
+        }
+
+        Main.panel.addToStatusArea('AppTabs', this, this._saved_panel_index, 'left');
+        this.show();
+        this._tab_controls.set_display_mode_icon('panel');
+    }
+
+    _apply_topbar_visibility(enteringStandalone) {
+        if (!enteringStandalone) {
+            if (this._topbar_was_hidden) {
+                Main.panel.show();
+                this._topbar_was_hidden = false;
+            }
+            return;
+        }
+
+        let shouldHide = this._settings.get_boolean(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE);
+        if (shouldHide && Main.panel.visible) {
+            Main.panel.hide();
+            this._topbar_was_hidden = true;
+        }
+    }
+
+    _on_display_mode_setting_changed(settings, key) {
+        let newMode = settings.get_string(key);
+        if (newMode === this._display_mode)
+            return;
+
+        if (newMode === 'standalone')
+            this._enter_standalone_mode();
+        else
+            this._enter_panel_mode();
+    }
+
+    _on_hide_topbar_setting_changed() {
+        if (this._display_mode === 'standalone')
+            this._apply_topbar_visibility(true);
+    }
+
     destroy() {
         if (this._init_timeout_id) {
             GLib.Source.remove(this._init_timeout_id);
@@ -810,6 +938,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = null;
         this._recent_windows_state = null;
         this._tab_controls = null;
+        if (this._floating_bar) {
+            this._floating_bar.destroy();
+            this._floating_bar = null;
+        }
+        if (this._topbar_was_hidden) {
+            Main.panel.show();
+            this._topbar_was_hidden = false;
+        }
         super.destroy();
     }
 
