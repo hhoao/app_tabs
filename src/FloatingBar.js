@@ -27,6 +27,8 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
     }
 
     _begin_drag(event) {
+        if (this._dragging)
+            return;
         this._dragging = true;
         let [stageX, stageY] = event.get_coords();
         this._dragStartX = stageX;
@@ -82,7 +84,6 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
 
         this.set_position(pos.x, pos.y);
         Main.uiGroup.add_child(this);
-        this.get_parent().set_child_above_sibling(this, null);
     }
 
     detach() {
@@ -97,6 +98,8 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
             global.stage.disconnect(this._releaseId);
             this._releaseId = null;
         }
+
+        this._dragging = false;
 
         if (this.get_parent())
             this.get_parent().remove_child(this);
