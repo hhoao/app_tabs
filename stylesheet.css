@@ -60,3 +60,9 @@
     /* background: rgba(255, 255, 255, 0.1); */
     border-radius: 8px;
 }
+
+.app-tabs-floating-bar {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    padding: 2px 4px;
+}
