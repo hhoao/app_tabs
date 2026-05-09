@@ -174,6 +174,10 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         group.add(only_display_current_workspace_tabs_switch);
         group.add(show_recent_windows_menu_switch);
         group.add(show_add_tab_button_switch);
+        const display_mode_row = this.get_display_mode_row(settings);
+        const hide_topbar_in_standalone_row = this.get_hide_topbar_in_standalone_row(settings);
+        group.add(display_mode_row);
+        group.add(hide_topbar_in_standalone_row);
         return group;
     }
     get_max_width_row(settings) {
@@ -248,6 +252,50 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         action_row.activatable_widget = gtk_switch;
         return action_row;
     };
+
+    get_display_mode_row(settings) {
+        const key_name = SchemaKeyConstants.DISPLAY_MODE;
+        const combo = new Gtk.DropDown({
+            valign: Gtk.Align.CENTER,
+            model: new Gtk.StringList([
+                PrefsStrings.displayModePanel,
+                PrefsStrings.displayModeStandalone,
+            ]),
+        });
+        let currentMode = settings.get_string(key_name);
+        combo.set_selected(currentMode === 'standalone' ? 1 : 0);
+        combo.connect('notify::selected', () => {
+            let mode = combo.get_selected() === 1 ? 'standalone' : 'panel';
+            settings.set_string(key_name, mode);
+        });
+        settings.connect('changed::' + key_name, () => {
+            let mode = settings.get_string(key_name);
+            combo.set_selected(mode === 'standalone' ? 1 : 0);
+        });
+
+        const row = new Adw.ActionRow({
+            title: PrefsStrings.displayMode,
+        });
+        row.add_suffix(combo);
+        row.activatable_widget = combo;
+        return row;
+    }
+
+    get_hide_topbar_in_standalone_row(settings) {
+        const key_name = SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE;
+        const gtk_switch = new Gtk.Switch({
+            active: settings.get_boolean(key_name),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(key_name, gtk_switch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const row = new Adw.ActionRow({
+            title: PrefsStrings.hideTopbarInStandalone,
+        });
+        row.add_suffix(gtk_switch);
+        row.activatable_widget = gtk_switch;
+        return row;
+    }
 
     get_app_tab_config_group = (settings, window) => {
         const app_tab_config_group = new Adw.PreferencesGroup({
