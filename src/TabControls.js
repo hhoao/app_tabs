@@ -22,6 +22,7 @@ export class TabControls {
         this._add_tab_divider = this._create_divider();
         this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
+        this._is_display_mode_toggle_button_hover = false;
         this._on_add_tab = onAddTab ?? (() => {});
         this._add_tab_button = this._create_add_tab_button();
         this.set_add_tab_visible(false);
@@ -58,10 +59,19 @@ export class TabControls {
             this._on_toggle_display_mode?.();
         });
         button.connect('notify::hover', () => {
-            this._apply_add_button_style();
+            this._is_display_mode_toggle_button_hover = button.hover;
+            this._apply_display_mode_toggle_button_style();
         });
-        button.set_style(this._get_add_button_style());
+        button.set_style(this._get_display_mode_toggle_button_style());
         return button;
+    }
+
+    _apply_display_mode_toggle_button_style() {
+        this._display_mode_toggle_button?.set_style(this._get_display_mode_toggle_button_style());
+    }
+
+    _get_display_mode_toggle_button_style() {
+        return buildAddButtonStyle(this._is_dark_mode, this._is_display_mode_toggle_button_hover);
     }
 
     destroy() {
@@ -78,6 +88,7 @@ export class TabControls {
         this._add_tab_divider = null;
         this._is_add_tab_visible = false;
         this._is_add_button_hover = false;
+        this._is_display_mode_toggle_button_hover = false;
         this._on_add_tab = null;
         this._add_tab_button = null;
         this._display_mode_toggle_button = null;
@@ -90,6 +101,7 @@ export class TabControls {
         this._apply_divider_styles();
         this._apply_recent_windows_button_style();
         this._apply_add_button_style();
+        this._apply_display_mode_toggle_button_style();
     }
 
     set_tabs(tabs) {
