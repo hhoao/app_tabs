@@ -257,10 +257,10 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         const key_name = SchemaKeyConstants.DISPLAY_MODE;
         const combo = new Gtk.DropDown({
             valign: Gtk.Align.CENTER,
-            model: new Gtk.StringList([
+            model: new Gtk.StringList(
                 PrefsStrings.displayModePanel,
                 PrefsStrings.displayModeStandalone,
-            ]),
+            ),
         });
         let currentMode = settings.get_string(key_name);
         combo.set_selected(currentMode === 'standalone' ? 1 : 0);
