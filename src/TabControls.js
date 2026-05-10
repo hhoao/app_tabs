@@ -91,6 +91,7 @@ export class TabControls {
         this._is_display_mode_toggle_button_hover = false;
         this._on_add_tab = null;
         this._add_tab_button = null;
+        this._display_mode_toggle_button?.destroy();
         this._display_mode_toggle_button = null;
         this._on_toggle_display_mode = null;
     }

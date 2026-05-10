@@ -29,6 +29,7 @@ import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
 const RECENT_WINDOWS_MENU_MAX_HEIGHT = 520;
 const RECENT_CLOSED_DISPLAY_LIMIT = 10;
 const RECENT_WINDOW_LABEL_MAX_LENGTH = 42;
+const DISPLAY_MODE_TOGGLE_ROLE = 'AppTabsDisplayModeToggle';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -63,6 +64,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._display_mode = this._settings.get_string(SchemaKeyConstants.DISPLAY_MODE);
         this._saved_panel_index = 0;
         this._floating_bar = null;
+        this._panel_display_mode_toggle = null;
         this._topbar_was_hidden = false;
 
         this._tab_controls = new TabControls({
@@ -79,7 +81,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_panel_container.add_child(this._scroll_view);
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_divider());
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());
-        this._tab_panel_container.add_child(this._tab_controls.get_display_mode_toggle_button());
         this.add_child(this._tab_panel_container);
         this._init_pool_tabs();
         this._init_recent_windows_menu();
@@ -782,8 +783,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._saved_panel_index === -1)
             this._saved_panel_index = this._config.index ?? 10;
 
-        if (this.get_parent())
-            this.get_parent().remove_child(this);
+        this._remove_from_panel_status_area();
 
         this._floating_bar = new FloatingBar({
             tabPanel: this,
@@ -792,6 +792,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._tab_panel_container.get_parent())
             this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
         this._floating_bar.add_child(this._tab_panel_container);
+        this._move_display_mode_toggle_to_standalone();
         this._floating_bar.attach();
         this.hide();
         this._tab_controls.set_display_mode_icon('standalone');
@@ -817,8 +818,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         let children = Object.keys(statusArea);
         this._saved_panel_index = children.indexOf('AppTabs');
 
-        if (this.get_parent())
-            this.get_parent().remove_child(this);
+        this._remove_from_panel_status_area();
 
         this._floating_bar = new FloatingBar({
             tabPanel: this,
@@ -827,6 +827,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (this._tab_panel_container.get_parent())
             this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
         this._floating_bar.add_child(this._tab_panel_container);
+        this._move_display_mode_toggle_to_standalone();
         this._floating_bar.attach();
         this.hide();
         this._tab_controls.set_display_mode_icon('standalone');
@@ -852,9 +853,79 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this.add_child(container);
         }
 
-        Main.panel.addToStatusArea('AppTabs', this, this._saved_panel_index, 'left');
+        this._remove_from_panel_status_area();
+        Main.panel.addToStatusArea('AppTabs', this, this._saved_panel_index, this._config.side);
+        this.attach_panel_display_mode_toggle();
+        this.container?.show();
+        this._tab_panel_container.show();
         this.show();
         this._tab_controls.set_display_mode_icon('panel');
+    }
+
+    attach_panel_display_mode_toggle() {
+        if (this._display_mode !== 'panel')
+            return;
+
+        this._move_display_mode_toggle_to_panel();
+    }
+
+    _move_display_mode_toggle_to_standalone() {
+        this._remove_panel_display_mode_toggle();
+        let button = this._tab_controls.get_display_mode_toggle_button();
+        if (button.get_parent())
+            button.get_parent().remove_child(button);
+        this._tab_panel_container.add_child(button);
+    }
+
+    _move_display_mode_toggle_to_panel() {
+        let button = this._tab_controls.get_display_mode_toggle_button();
+        if (button.get_parent())
+            button.get_parent().remove_child(button);
+
+        this._remove_panel_display_mode_toggle();
+        this._panel_display_mode_toggle = new PanelMenu.Button(1.0, null, true);
+        this._panel_display_mode_toggle.add_style_class_name('app-tabs-display-mode-panel-toggle');
+        this._panel_display_mode_toggle.add_child(button);
+        Main.panel.addToStatusArea(
+            DISPLAY_MODE_TOGGLE_ROLE,
+            this._panel_display_mode_toggle,
+            this._saved_panel_index + 1,
+            this._config.side
+        );
+    }
+
+    _remove_panel_display_mode_toggle() {
+        let statusItem = Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        let button = this._tab_controls?.get_display_mode_toggle_button?.();
+        if (button?.get_parent())
+            button.get_parent().remove_child(button);
+
+        if (statusItem) {
+            this._remove_actor_from_parent(statusItem.container);
+            if (statusItem !== this._panel_display_mode_toggle)
+                statusItem.destroy();
+            delete Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        }
+        this._remove_actor_from_parent(this._panel_display_mode_toggle?.container);
+        this._panel_display_mode_toggle?.destroy();
+        this._panel_display_mode_toggle = null;
+    }
+
+    _remove_from_panel_status_area() {
+        this._remove_actor_from_parent(this.container);
+        let statusItem = Main.panel.statusArea.AppTabs;
+        if (statusItem) {
+            this._remove_actor_from_parent(statusItem.container);
+            if (statusItem !== this)
+                statusItem.destroy();
+        }
+        delete Main.panel.statusArea.AppTabs;
+        this._remove_panel_display_mode_toggle();
+    }
+
+    _remove_actor_from_parent(actor) {
+        if (actor?.get_parent())
+            actor.get_parent().remove_child(actor);
     }
 
     _apply_topbar_visibility(enteringStandalone) {
@@ -959,6 +1030,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             Main.panel.show();
             this._topbar_was_hidden = false;
         }
+        this._remove_from_panel_status_area();
         super.destroy();
     }
 

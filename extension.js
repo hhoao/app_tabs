@@ -24,6 +24,7 @@ export default class AppTabsExtension extends Extension {
             Main.panel.addToStatusArea(
                 'AppTabs', this._tabs, this._config.index, this._config.side
             );
+            this._tabs.attach_panel_display_mode_toggle();
         }
     }
 
