@@ -9,6 +9,7 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
         super._init({
             reactive: true,
             style_class: 'app-tabs-floating-bar',
+            x_expand: false,
         });
         this._tabPanel = tabPanel;
         this._settings = settings;
@@ -72,18 +73,33 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
     }
 
     attach() {
+        // Add to uiGroup first so the actor gets allocated before positioning
+        Main.uiGroup.add_child(this);
+        this.show();
+
         let posStr = this._settings.get_string(SchemaKeyConstants.STANDALONE_BAR_POSITION);
         let pos = { x: 0, y: 0 };
         try {
             pos = JSON.parse(posStr);
         } catch (_e) { /* use defaults */ }
 
+        // Default to top-center below the panel if position was never set
+        if (pos.x === 0 && pos.y === 0 && posStr === '{"x":0,"y":0}') {
+            let monitor = global.display.get_primary_monitor();
+            let panelHeight = Main.panel?.get_height?.() ?? Main.panel?.height ?? 30;
+            // Wait for allocation, then center
+            pos.y = panelHeight + 4;
+            // x will be set after we know our width
+            pos.x = Math.max(0, Math.floor((monitor.width - 200) / 2));
+        }
+
         let monitor = global.display.get_primary_monitor();
-        pos.x = Math.max(0, Math.min(pos.x, Math.max(0, monitor.width - 200)));
-        pos.y = Math.max(0, Math.min(pos.y, Math.max(0, monitor.height - 40)));
+        let maxX = Math.max(0, monitor.width - Math.max(this.width || 200, 200));
+        let maxY = Math.max(0, monitor.height - Math.max(this.height || 30, 30));
+        pos.x = Math.max(0, Math.min(pos.x, maxX));
+        pos.y = Math.max(0, Math.min(pos.y, maxY));
 
         this.set_position(pos.x, pos.y);
-        Main.uiGroup.add_child(this);
     }
 
     detach() {

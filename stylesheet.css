@@ -64,5 +64,6 @@
 .app-tabs-floating-bar {
     background-color: rgba(0, 0, 0, 0.8);
     border-radius: 8px;
-    padding: 2px 4px;
+    padding: 4px 6px;
+    min-height: 32px;
 }
