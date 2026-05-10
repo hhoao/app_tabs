@@ -42,9 +42,10 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
             let newY = this._barStartY + (my - this._dragStartY);
 
             let monitor = global.display.get_primary_monitor();
-            let geom = monitor.get_geometry();
-            newX = Math.max(0, Math.min(newX, geom.width - this.width));
-            newY = Math.max(0, Math.min(newY, geom.height - this.height));
+            let maxW = Math.max(0, monitor.width - this.width);
+            let maxH = Math.max(0, monitor.height - this.height);
+            newX = Math.max(0, Math.min(newX, maxW));
+            newY = Math.max(0, Math.min(newY, maxH));
 
             this.set_position(Math.round(newX), Math.round(newY));
             return Clutter.EVENT_STOP;
@@ -78,9 +79,8 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
         } catch (_e) { /* use defaults */ }
 
         let monitor = global.display.get_primary_monitor();
-        let geom = monitor.get_geometry();
-        pos.x = Math.max(0, Math.min(pos.x, geom.width - 200));
-        pos.y = Math.max(0, Math.min(pos.y, geom.height - 40));
+        pos.x = Math.max(0, Math.min(pos.x, Math.max(0, monitor.width - 200)));
+        pos.y = Math.max(0, Math.min(pos.y, Math.max(0, monitor.height - 40)));
 
         this.set_position(pos.x, pos.y);
         Main.uiGroup.add_child(this);
