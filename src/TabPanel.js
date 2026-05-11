@@ -87,8 +87,16 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_controls.set_recent_windows_visible(this.show_recent_windows_menu);
 
         Main.overview.connectObject(
-            'hiding', this._sync.bind(this),
-            'showing', this._reset_all_tabs.bind(this), this);
+            'hiding', () => {
+                this._sync();
+                if (this._topbar_was_hidden)
+                    Main.panel.hide();
+            },
+            'showing', () => {
+                this._reset_all_tabs();
+                if (this._topbar_was_hidden)
+                    Main.panel.show();
+            }, this);
         Shell.WindowTracker.get_default().connectObject('notify::focus-app',
             this._focus_app_changed.bind(this), this);
         global.window_manager.connectObject('switch-workspace',
@@ -938,7 +946,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         }
 
         let shouldHide = this._settings.get_boolean(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE);
-        if (shouldHide && Main.panel.visible) {
+        if (shouldHide) {
             Main.panel.hide();
             this._topbar_was_hidden = true;
         } else if (!shouldHide && this._topbar_was_hidden) {

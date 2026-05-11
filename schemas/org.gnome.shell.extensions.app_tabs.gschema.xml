@@ -58,10 +58,10 @@
                 <choice value="panel"/>
                 <choice value="standalone"/>
             </choices>
-            <default>"standalone"</default>
+            <default>"panel"</default>
         </key>
         <key name="hide-topbar-in-standalone" type="b">
-            <default>false</default>
+            <default>true</default>
         </key>
         <key name="standalone-bar-position" type="s">
             <default>"{\"x\":0,\"y\":0}"</default>
