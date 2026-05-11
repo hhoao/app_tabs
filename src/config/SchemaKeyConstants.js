@@ -12,4 +12,6 @@ export const SchemaKeyConstants = {
     DISPLAY_MODE: "display-mode",
     HIDE_TOPBAR_IN_STANDALONE: "hide-topbar-in-standalone",
     STANDALONE_BAR_POSITION: "standalone-bar-position",
+    STANDALONE_APPLICATIONS: "standalone-applications",
+    PANEL_APPLICATIONS: "panel-applications",
 }

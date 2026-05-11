@@ -4,6 +4,11 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import {SchemaKeyConstants} from './src/config/SchemaKeyConstants.js';
 import {PrefsStrings} from './src/locale/PrefsStrings.js';
+import {
+    removeStandaloneApplication,
+    restoreStandaloneApplications,
+    serializeStandaloneApplications,
+} from './src/utils/StandaloneApplications.js';
 
 export default class ApplicationTabPreferences extends ExtensionPreferences {
     open_uri(uri) {
@@ -297,6 +302,76 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         return row;
     }
 
+    get_application_display_mode_group(settings, keyName, title, description, emptyTitle) {
+        const group = new Adw.PreferencesGroup({
+            title,
+            description,
+        });
+        let rows = [];
+
+        const refresh = () => {
+            for (let row of rows)
+                group.remove(row);
+            rows = [];
+
+            let applications = restoreStandaloneApplications(
+                settings.get_string(keyName)
+            );
+            if (!applications.length) {
+                let emptyRow = new Adw.ActionRow({
+                    title: emptyTitle,
+                });
+                emptyRow.set_sensitive(false);
+                group.add(emptyRow);
+                rows.push(emptyRow);
+                return;
+            }
+
+            for (let application of applications) {
+                let row = this.create_application_display_mode_row(settings, keyName, application);
+                group.add(row);
+                rows.push(row);
+            }
+        };
+
+        settings.connect('changed::' + keyName, refresh);
+        refresh();
+        return group;
+    }
+
+    create_application_display_mode_row(settings, keyName, application) {
+        let title = application.name || application.appId;
+        const row = new Adw.ActionRow({
+            title,
+            subtitle: application.appId,
+        });
+        const icon = new Gtk.Image({
+            icon_name: application.iconName || 'application-x-executable-symbolic',
+            pixel_size: 24,
+            valign: Gtk.Align.CENTER,
+        });
+        const deleteButton = new Gtk.Button({
+            icon_name: 'user-trash-symbolic',
+            valign: Gtk.Align.CENTER,
+        });
+        deleteButton.add_css_class('flat');
+        deleteButton.connect('clicked', () => {
+            let applications = restoreStandaloneApplications(
+                settings.get_string(keyName)
+            );
+            settings.set_string(
+                keyName,
+                serializeStandaloneApplications(
+                    removeStandaloneApplication(applications, application.appId)
+                )
+            );
+        });
+        row.add_prefix(icon);
+        row.add_suffix(deleteButton);
+        row.activatable_widget = deleteButton;
+        return row;
+    }
+
     get_app_tab_config_group = (settings, window) => {
         const app_tab_config_group = new Adw.PreferencesGroup({
             title: PrefsStrings.tabAppearanceJson,
@@ -393,7 +468,23 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         });
         const app_tab_config_group = this.get_app_tab_config_group(settings, window);
         const appearance_group = this.get_appearance_group(settings);
+        const standalone_applications_group = this.get_application_display_mode_group(
+            settings,
+            SchemaKeyConstants.STANDALONE_APPLICATIONS,
+            PrefsStrings.fixedStandaloneApplications,
+            PrefsStrings.fixedStandaloneApplicationsDescription,
+            PrefsStrings.noFixedStandaloneApplications
+        );
+        const panel_applications_group = this.get_application_display_mode_group(
+            settings,
+            SchemaKeyConstants.PANEL_APPLICATIONS,
+            PrefsStrings.fixedPanelApplications,
+            PrefsStrings.fixedPanelApplicationsDescription,
+            PrefsStrings.noFixedPanelApplications
+        );
         page.add(appearance_group);
+        page.add(standalone_applications_group);
+        page.add(panel_applications_group);
         page.add(app_tab_config_group);
         window.add(page);
         window.add(this.get_about_page());

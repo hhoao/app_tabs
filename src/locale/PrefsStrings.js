@@ -108,4 +108,22 @@ export const PrefsStrings = {
     get hideTopbarInStandalone() {
         return _('Hide top bar in standalone mode');
     },
+    get fixedStandaloneApplications() {
+        return _('Fixed standalone applications');
+    },
+    get fixedStandaloneApplicationsDescription() {
+        return _('Applications that always use standalone mode.');
+    },
+    get noFixedStandaloneApplications() {
+        return _('No fixed standalone applications');
+    },
+    get fixedPanelApplications() {
+        return _('Fixed panel applications');
+    },
+    get fixedPanelApplicationsDescription() {
+        return _('Applications that always use panel mode.');
+    },
+    get noFixedPanelApplications() {
+        return _('No fixed panel applications');
+    },
 };

@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-10 00:53+0800\n"
+"POT-Creation-Date: 2026-05-11 11:26+0800\n"
 "PO-Revision-Date: 2026-05-04 10:07+0800\n"
 "Last-Translator: \n"
 "Language-Team: Chinese (China)\n"
@@ -153,6 +153,30 @@ msgstr "独立"
 msgid "Hide top bar in standalone mode"
 msgstr "独立模式下隐藏顶栏"
 
+#: src/locale/PrefsStrings.js:112
+msgid "Fixed standalone applications"
+msgstr "固定独立模式应用"
+
+#: src/locale/PrefsStrings.js:115
+msgid "Applications that always use standalone mode."
+msgstr "始终使用独立模式的应用。"
+
+#: src/locale/PrefsStrings.js:118
+msgid "No fixed standalone applications"
+msgstr "暂无固定独立模式应用"
+
+#: src/locale/PrefsStrings.js:121
+msgid "Fixed panel applications"
+msgstr "固定 Panel 模式应用"
+
+#: src/locale/PrefsStrings.js:124
+msgid "Applications that always use panel mode."
+msgstr "始终使用 Panel 模式的应用。"
+
+#: src/locale/PrefsStrings.js:127
+msgid "No fixed panel applications"
+msgstr "暂无固定 Panel 模式应用"
+
 #: src/locale/AppTabMenuStrings.js:8
 msgid "Activate"
 msgstr "激活"
@@ -214,41 +238,61 @@ msgid "Force kill (dangerous)"
 msgstr "强制结束（危险）"
 
 #: src/locale/AppTabMenuStrings.js:53
+msgid "Fixed standalone mode"
+msgstr "固定独立模式"
+
+#: src/locale/AppTabMenuStrings.js:56
+msgid "Fixed panel mode"
+msgstr "固定 Panel 模式"
+
+#: src/locale/AppTabMenuStrings.js:59
 msgid "Current application windows"
 msgstr "当前应用窗口"
 
-#: src/locale/AppTabMenuStrings.js:56
+#: src/locale/AppTabMenuStrings.js:62
 msgid "Current all applications windows"
 msgstr "当前全部应用窗口"
 
-#: src/locale/AppTabMenuStrings.js:59
+#: src/locale/AppTabMenuStrings.js:65
 msgid "No current windows"
 msgstr "没有当前窗口"
 
-#: src/locale/AppTabMenuStrings.js:62
+#: src/locale/AppTabMenuStrings.js:68
 msgid "Recently closed windows"
 msgstr "最近关闭的窗口"
 
-#: src/locale/AppTabMenuStrings.js:65
+#: src/locale/AppTabMenuStrings.js:71
 msgid "No recently closed windows"
 msgstr "没有最近关闭的窗口"
 
-#: src/locale/AppTabMenuStrings.js:68
+#: src/locale/AppTabMenuStrings.js:74
 msgid "Untitled window"
 msgstr "未命名窗口"
 
-#: src/locale/AppTabMenuStrings.js:71
+#: src/locale/AppTabMenuStrings.js:77
 msgid "just now"
 msgstr "刚刚"
 
-#: src/locale/AppTabMenuStrings.js:74
+#: src/locale/AppTabMenuStrings.js:80
 msgid "m ago"
 msgstr " 分钟前"
 
-#: src/locale/AppTabMenuStrings.js:77
+#: src/locale/AppTabMenuStrings.js:83
 msgid "h ago"
 msgstr " 小时前"
 
-#: src/locale/AppTabMenuStrings.js:80
+#: src/locale/AppTabMenuStrings.js:86
 msgid "d ago"
 msgstr " 天前"
+
+#~ msgid "Standalone applications"
+#~ msgstr "独立模式应用"
+
+#~ msgid "Applications that open App Tabs in standalone mode by default."
+#~ msgstr "默认以独立模式打开 Application Tabs 的应用。"
+
+#~ msgid "No standalone applications recorded"
+#~ msgstr "暂无记录的独立模式应用"
+
+#~ msgid "Default standalone for current application"
+#~ msgstr "当前应用默认独立模式"

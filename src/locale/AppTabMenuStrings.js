@@ -49,6 +49,12 @@ export const AppTabMenuStrings = {
     get forceKillDangerous() {
         return _('Force kill (dangerous)');
     },
+    get fixedStandaloneForCurrentApplication() {
+        return _('Fixed standalone mode');
+    },
+    get fixedPanelForCurrentApplication() {
+        return _('Fixed panel mode');
+    },
     get currentApplicationWindows() {
         return _('Current application windows');
     },

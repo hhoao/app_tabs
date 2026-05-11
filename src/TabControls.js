@@ -7,7 +7,7 @@ import {
 } from './utils/ThemeStyle.js';
 
 export class TabControls {
-    constructor({ isDarkMode, panelHeight, onAddTab = null, onShowRecentWindows = null, onToggleDisplayMode = null }) {
+    constructor({ isDarkMode, panelHeight, onAddTab = null, onShowRecentWindows = null, onToggleDisplayMode = null, onShowDisplayModeMenu = null }) {
         this.actor = new St.BoxLayout({ style_class: 'app-tabs-box' });
         this._tabs = [];
         this._tab_divider_pool = [];
@@ -27,6 +27,7 @@ export class TabControls {
         this._add_tab_button = this._create_add_tab_button();
         this.set_add_tab_visible(false);
         this._on_toggle_display_mode = onToggleDisplayMode ?? (() => {});
+        this._on_show_display_mode_menu = onShowDisplayModeMenu ?? (() => {});
         this._display_mode_toggle_button = this._create_display_mode_toggle_button();
         this._ensure_divider_count();
     }
@@ -55,6 +56,13 @@ export class TabControls {
             child: icon,
         });
         button.add_style_class_name('app-tabs-display-mode-button');
+        button.connect('button-press-event', (_actor, event) => {
+            if (event.get_button() === Clutter.BUTTON_SECONDARY) {
+                this._on_show_display_mode_menu?.();
+                return Clutter.EVENT_STOP;
+            }
+            return Clutter.EVENT_PROPAGATE;
+        });
         button.connect('clicked', () => {
             this._on_toggle_display_mode?.();
         });
@@ -94,6 +102,7 @@ export class TabControls {
         this._display_mode_toggle_button?.destroy();
         this._display_mode_toggle_button = null;
         this._on_toggle_display_mode = null;
+        this._on_show_display_mode_menu = null;
     }
 
     set_theme({ isDarkMode, panelHeight }) {

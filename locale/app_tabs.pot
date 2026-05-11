@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the Application Tabs Dev package.
+# Copyright (C) YEAR hhoao
+# This file is distributed under the same license as the app_tabs package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Application Tabs Dev\n"
+"Project-Id-Version: app_tabs 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-10 00:53+0800\n"
+"POT-Creation-Date: 2026-05-11 11:26+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -155,6 +155,30 @@ msgstr ""
 msgid "Hide top bar in standalone mode"
 msgstr ""
 
+#: src/locale/PrefsStrings.js:112
+msgid "Fixed standalone applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:115
+msgid "Applications that always use standalone mode."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:118
+msgid "No fixed standalone applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:121
+msgid "Fixed panel applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:124
+msgid "Applications that always use panel mode."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:127
+msgid "No fixed panel applications"
+msgstr ""
+
 #: src/locale/AppTabMenuStrings.js:8
 msgid "Activate"
 msgstr ""
@@ -216,41 +240,49 @@ msgid "Force kill (dangerous)"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:53
-msgid "Current application windows"
+msgid "Fixed standalone mode"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:56
-msgid "Current all applications windows"
+msgid "Fixed panel mode"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:59
-msgid "No current windows"
+msgid "Current application windows"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:62
-msgid "Recently closed windows"
+msgid "Current all applications windows"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:65
-msgid "No recently closed windows"
+msgid "No current windows"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:68
-msgid "Untitled window"
+msgid "Recently closed windows"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:71
-msgid "just now"
+msgid "No recently closed windows"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:74
-msgid "m ago"
+msgid "Untitled window"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:77
-msgid "h ago"
+msgid "just now"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:80
+msgid "m ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:83
+msgid "h ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:86
 msgid "d ago"
 msgstr ""
