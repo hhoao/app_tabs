@@ -158,6 +158,7 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
 
     attach() {
         Main.uiGroup.add_child(this);
+        this.opacity = 0;
         this.show();
 
         let posStr = this._settings.get_string(SchemaKeyConstants.STANDALONE_BAR_POSITION);
@@ -178,6 +179,13 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
             pos = this._clamp_position(pos);
             this.set_position(pos.x, pos.y);
         }
+
+        this.remove_transition('opacity');
+        this.ease({
+            opacity: 255,
+            duration: 200,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
     }
 
     detach() {

@@ -79,6 +79,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._floating_bar = null;
         this._panel_display_mode_toggle = null;
         this._topbar_was_hidden = false;
+        this._switching_display_mode = false;
         this._refreshing_display_mode_menu = false;
 
         this._tab_controls = new TabControls({
@@ -930,17 +931,27 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._floating_bar.add_child(this._tab_panel_container);
         this._move_display_mode_toggle_to_standalone();
         this._floating_bar.attach();
-        this.hide();
         this._tab_controls.set_display_mode_icon('standalone');
         this._apply_topbar_visibility(true);
+
+        this.opacity = 0;
+        this.hide();
     }
 
     toggle_display_mode() {
+        if (this._switching_display_mode)
+            return;
+
+        this._switching_display_mode = true;
         if (this._display_mode === 'panel') {
             this._enter_standalone_mode();
         } else {
             this._enter_panel_mode();
         }
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._switching_display_mode = false;
+            return GLib.SOURCE_REMOVE;
+        });
     }
 
     _enter_standalone_mode() {
@@ -955,18 +966,30 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         this._remove_from_panel_status_area();
 
-        this._floating_bar = new FloatingBar({
-            tabPanel: this,
-            settings: this._settings,
-        });
+        if (!this._floating_bar) {
+            this._floating_bar = new FloatingBar({
+                tabPanel: this,
+                settings: this._settings,
+            });
+        }
         if (this._tab_panel_container.get_parent())
             this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
         this._floating_bar.add_child(this._tab_panel_container);
         this._move_display_mode_toggle_to_standalone();
         this._floating_bar.attach();
-        this.hide();
         this._tab_controls.set_display_mode_icon('standalone');
         this._apply_topbar_visibility(true);
+
+        this.remove_transition('opacity');
+        this.ease({
+            opacity: 0,
+            duration: 200,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            onComplete: () => {
+                if (this._display_mode === 'standalone')
+                    this.hide();
+            },
+        });
     }
 
     _enter_panel_mode() {
@@ -982,8 +1005,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             if (container.get_parent())
                 container.get_parent().remove_child(container);
             this._floating_bar.detach();
-            this._floating_bar.destroy();
-            this._floating_bar = null;
             this.add_child(container);
         }
 
@@ -994,6 +1015,14 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_panel_container.show();
         this.show();
         this._tab_controls.set_display_mode_icon('panel');
+
+        this.remove_transition('opacity');
+        this.opacity = 0;
+        this.ease({
+            opacity: 255,
+            duration: 200,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+        });
     }
 
     attach_panel_display_mode_toggle() {
