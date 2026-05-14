@@ -117,3 +117,33 @@ test('panel mode keeps the display mode toggle outside the original tabs contain
     assert(extensionSource.includes('this._tabs.attach_panel_display_mode_toggle();'),
         'expected extension enable to attach the separate toggle in panel mode');
 });
+
+test('standalone topbar hiding moves panelBox without toggling panel visibility', () => {
+    let source = readSource('./src/TabPanel.js');
+    let visibilityStart = source.indexOf('_apply_topbar_visibility(enteringStandalone)');
+    let visibilityEnd = source.indexOf('_on_display_mode_setting_changed', visibilityStart);
+    let visibilitySource = source.slice(visibilityStart, visibilityEnd);
+
+    assert(source.includes('_hide_topbar_for_standalone()') &&
+        source.includes('_restore_topbar_after_standalone()'),
+        'expected standalone topbar visibility to use dedicated panelBox helpers');
+    assert(source.includes('Main.layoutManager.panelBox'),
+        'expected standalone topbar hiding to manipulate layoutManager.panelBox');
+    assert(source.includes('affectsStruts: false'),
+        'expected hidden standalone topbar not to reserve workspace struts');
+    assert(!visibilitySource.includes('Main.panel.hide()') &&
+        !visibilitySource.includes('Main.panel.show()'),
+        'expected topbar visibility changes not to hide or show Main.panel directly');
+});
+
+test('standalone topbar restore is a no-op until this extension hid it', () => {
+    let source = readSource('./src/TabPanel.js');
+    let restoreStart = source.indexOf('_restore_topbar_after_standalone()');
+    let restoreEnd = source.indexOf('_on_display_mode_setting_changed', restoreStart);
+    let restoreSource = source.slice(restoreStart, restoreEnd);
+
+    assert(restoreSource.includes('!this._topbar_chrome_adjusted') &&
+        restoreSource.includes('!this._topbar_was_hidden') &&
+        restoreSource.includes('return;'),
+        'expected topbar restore not to move panelBox before standalone hiding owned it');
+});

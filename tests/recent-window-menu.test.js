@@ -104,6 +104,18 @@ test('TabPanel records global opened and closed window snapshots and can restore
         'expected recent history to be global instead of filtered by the focused application');
 });
 
+test('existing windows are not recorded as opened when rebuilding tabs', () => {
+    let panel = readSource('./src/TabPanel.js');
+    let addTabsStart = panel.indexOf('_add_tabs_by_windows(app, windows)');
+    let sortWindowsStart = panel.indexOf('\n    _sort_windows_by_custom_order(windows)', addTabsStart);
+    let addTabsSource = panel.slice(addTabsStart, sortWindowsStart);
+
+    assert(addTabsSource.includes('sorted_windows.forEach((window) => {'),
+        'expected test to inspect the tab rebuild loop');
+    assert(!addTabsSource.includes("_record_recent_window_snapshot(app, window, 'opened')"),
+        'expected tab rebuilds not to perform opened-window snapshot writes');
+});
+
 test('recent-window menu is compact with icon submenus, hidden scrollbar, and no opened section', () => {
     let panel = readSource('./src/TabPanel.js');
     let strings = readSource('./src/locale/AppTabMenuStrings.js');

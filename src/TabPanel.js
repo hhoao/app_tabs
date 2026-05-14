@@ -79,6 +79,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._floating_bar = null;
         this._panel_display_mode_toggle = null;
         this._topbar_was_hidden = false;
+        this._topbar_chrome_adjusted = false;
+        this._topbar_base_y = 0;
         this._switching_display_mode = false;
         this._refreshing_display_mode_menu = false;
 
@@ -107,12 +109,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             'hiding', () => {
                 this._sync();
                 if (this._topbar_was_hidden)
-                    Main.panel.hide();
+                    this._hide_topbar_for_standalone();
             },
             'showing', () => {
                 this._reset_all_tabs();
                 if (this._topbar_was_hidden)
-                    Main.panel.show();
+                    this._show_topbar_temporarily();
             }, this);
         Shell.WindowTracker.get_default().connectObject('notify::focus-app',
             this._focus_app_changed.bind(this), this);
@@ -1093,21 +1095,88 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
     _apply_topbar_visibility(enteringStandalone) {
         if (!enteringStandalone) {
-            if (this._topbar_was_hidden) {
-                Main.panel.show();
-                this._topbar_was_hidden = false;
-            }
+            this._restore_topbar_after_standalone();
             return;
         }
 
         let shouldHide = this._settings.get_boolean(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE);
         if (shouldHide) {
-            Main.panel.hide();
-            this._topbar_was_hidden = true;
-        } else if (!shouldHide && this._topbar_was_hidden) {
-            Main.panel.show();
-            this._topbar_was_hidden = false;
+            this._hide_topbar_for_standalone();
+        } else {
+            this._restore_topbar_after_standalone();
         }
+    }
+
+    _get_topbar_panel_box() {
+        return Main.layoutManager.panelBox;
+    }
+
+    _get_topbar_height(panelBox) {
+        return panelBox?.get_height?.() ?? panelBox?.height ?? this._get_panel_height();
+    }
+
+    _get_hidden_topbar_y(panelBox) {
+        let anchorY = panelBox?.get_pivot_point?.()?.[1] ?? 0;
+        let deltaY = -this._get_topbar_height(panelBox);
+        if (anchorY < 0)
+            deltaY = -deltaY;
+        return this._topbar_base_y + deltaY;
+    }
+
+    _prepare_topbar_chrome_for_standalone(panelBox) {
+        if (this._topbar_chrome_adjusted)
+            return;
+
+        this._topbar_base_y = panelBox.y;
+        Main.layoutManager.removeChrome(panelBox);
+        Main.layoutManager.addChrome(panelBox, {
+            affectsStruts: false,
+            trackFullscreen: true,
+        });
+        this._topbar_chrome_adjusted = true;
+    }
+
+    _hide_topbar_for_standalone() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+
+        this._prepare_topbar_chrome_for_standalone(panelBox);
+        panelBox.remove_all_transitions?.();
+        panelBox.y = this._get_hidden_topbar_y(panelBox);
+        panelBox.hide();
+        this._topbar_was_hidden = true;
+    }
+
+    _show_topbar_temporarily() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+
+        panelBox.remove_all_transitions?.();
+        panelBox.show();
+        panelBox.y = this._topbar_base_y;
+    }
+
+    _restore_topbar_after_standalone() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+        if (!this._topbar_chrome_adjusted && !this._topbar_was_hidden)
+            return;
+
+        panelBox.remove_all_transitions?.();
+        panelBox.show();
+        panelBox.y = this._topbar_base_y;
+        if (this._topbar_chrome_adjusted) {
+            Main.layoutManager.removeChrome(panelBox);
+            Main.layoutManager.addChrome(panelBox, {
+                affectsStruts: true,
+                trackFullscreen: true,
+            });
+        }
+        this._topbar_chrome_adjusted = false;
+        this._topbar_was_hidden = false;
     }
 
     _on_display_mode_setting_changed(settings, key) {
@@ -1207,10 +1276,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._floating_bar.destroy();
             this._floating_bar = null;
         }
-        if (this._topbar_was_hidden) {
-            Main.panel.show();
-            this._topbar_was_hidden = false;
-        }
+        this._restore_topbar_after_standalone();
+        this._topbar_chrome_adjusted = false;
+        this._topbar_base_y = 0;
         this._remove_from_panel_status_area();
         super.destroy();
     }
@@ -1411,7 +1479,6 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         let sorted_windows = this._sort_windows_by_custom_order(windows);
 
         sorted_windows.forEach((window) => {
-            this._record_recent_window_snapshot(app, window, 'opened');
             let tab = this._tabs_pool[this._current_tabs_count];
             tab.set_text(window.get_title() || app.get_name());
             tab.set_icon(app.get_icon());
