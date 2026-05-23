@@ -4,6 +4,11 @@ import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import {SchemaKeyConstants} from './src/config/SchemaKeyConstants.js';
 import {PrefsStrings} from './src/locale/PrefsStrings.js';
+import {
+    removeStandaloneApplication,
+    restoreStandaloneApplications,
+    serializeStandaloneApplications,
+} from './src/utils/StandaloneApplications.js';
 
 export default class ApplicationTabPreferences extends ExtensionPreferences {
     open_uri(uri) {
@@ -167,11 +172,23 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         const ellipsize_mode_switch = this.get_ellipsize_mode_row(settings);
         const only_display_current_workspace_tabs_switch = this.get_only_display_current_workspace_row(settings);
         const show_add_tab_button_switch = this.get_show_add_tab_button_row(settings);
+        const show_recent_windows_menu_switch = this.get_show_recent_windows_menu_row(settings);
         const max_width_row = this.get_max_width_row(settings);
         group.add(max_width_row);
         group.add(ellipsize_mode_switch);
         group.add(only_display_current_workspace_tabs_switch);
+        group.add(show_recent_windows_menu_switch);
         group.add(show_add_tab_button_switch);
+        const display_mode_row = this.get_display_mode_row(settings);
+        const hide_topbar_in_standalone_row = this.get_hide_topbar_in_standalone_row(settings);
+        const [
+            enable_display_mode_transition_row,
+            display_mode_transition_duration_row,
+        ] = this.get_display_mode_transition_rows(settings);
+        group.add(display_mode_row);
+        group.add(hide_topbar_in_standalone_row);
+        group.add(enable_display_mode_transition_row);
+        group.add(display_mode_transition_duration_row);
         return group;
     }
     get_max_width_row(settings) {
@@ -230,6 +247,182 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         action_row.activatable_widget = gtk_switch;
         return action_row;
     };
+
+    get_show_recent_windows_menu_row = (settings) => {
+        const key_name = SchemaKeyConstants.SHOW_RECENT_WINDOWS_MENU;
+        const gtk_switch = new Gtk.Switch({
+            active: true,
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(key_name, gtk_switch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const action_row = new Adw.ActionRow({
+            title: PrefsStrings.showRecentWindowsMenu,
+        });
+        action_row.add_suffix(gtk_switch);
+        action_row.activatable_widget = gtk_switch;
+        return action_row;
+    };
+
+    get_display_mode_row(settings) {
+        const key_name = SchemaKeyConstants.DISPLAY_MODE;
+        const model = new Gtk.StringList();
+        model.append(PrefsStrings.displayModePanel);
+        model.append(PrefsStrings.displayModeStandalone);
+        const combo = new Gtk.DropDown({
+            valign: Gtk.Align.CENTER,
+            model,
+        });
+        let currentMode = settings.get_string(key_name);
+        combo.set_selected(currentMode === 'standalone' ? 1 : 0);
+        combo.connect('notify::selected', () => {
+            let mode = combo.get_selected() === 1 ? 'standalone' : 'panel';
+            settings.set_string(key_name, mode);
+        });
+        settings.connect('changed::' + key_name, () => {
+            let mode = settings.get_string(key_name);
+            combo.set_selected(mode === 'standalone' ? 1 : 0);
+        });
+
+        const row = new Adw.ActionRow({
+            title: PrefsStrings.displayMode,
+        });
+        row.add_suffix(combo);
+        row.activatable_widget = combo;
+        return row;
+    }
+
+    get_display_mode_transition_rows(settings) {
+        const enableKey = SchemaKeyConstants.ENABLE_DISPLAY_MODE_TRANSITION;
+        const durationKey = SchemaKeyConstants.DISPLAY_MODE_TRANSITION_DURATION;
+        const enableSwitch = new Gtk.Switch({
+            active: settings.get_boolean(enableKey),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(enableKey, enableSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const durationSpin = new Gtk.SpinButton({
+            valign: Gtk.Align.CENTER,
+            climb_rate: 1,
+            digits: 0,
+            snap_to_ticks: true,
+            adjustment: new Gtk.Adjustment({
+                lower: 0,
+                upper: 2000,
+                step_increment: 50,
+                page_increment: 100,
+            }),
+        });
+        settings.bind(durationKey, durationSpin, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        const enableRow = new Adw.ActionRow({
+            title: PrefsStrings.enableDisplayModeTransition,
+            subtitle: PrefsStrings.enableDisplayModeTransitionDescription,
+        });
+        enableRow.add_suffix(enableSwitch);
+        enableRow.activatable_widget = enableSwitch;
+
+        const durationRow = new Adw.ActionRow({
+            title: PrefsStrings.displayModeTransitionDuration,
+            subtitle: PrefsStrings.displayModeTransitionDurationDescription,
+        });
+        durationRow.add_suffix(durationSpin);
+        durationRow.activatable_widget = durationSpin;
+
+        const syncDurationSensitivity = () => {
+            durationRow.sensitive = enableSwitch.active;
+        };
+        enableSwitch.connect('notify::active', syncDurationSensitivity);
+        syncDurationSensitivity();
+
+        return [enableRow, durationRow];
+    }
+
+    get_hide_topbar_in_standalone_row(settings) {
+        const key_name = SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE;
+        const gtk_switch = new Gtk.Switch({
+            active: settings.get_boolean(key_name),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(key_name, gtk_switch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const row = new Adw.ActionRow({
+            title: PrefsStrings.hideTopbarInStandalone,
+        });
+        row.add_suffix(gtk_switch);
+        row.activatable_widget = gtk_switch;
+        return row;
+    }
+
+    get_application_display_mode_group(settings, keyName, title, description, emptyTitle) {
+        const group = new Adw.PreferencesGroup({
+            title,
+            description,
+        });
+        let rows = [];
+
+        const refresh = () => {
+            for (let row of rows)
+                group.remove(row);
+            rows = [];
+
+            let applications = restoreStandaloneApplications(
+                settings.get_string(keyName)
+            );
+            if (!applications.length) {
+                let emptyRow = new Adw.ActionRow({
+                    title: emptyTitle,
+                });
+                emptyRow.set_sensitive(false);
+                group.add(emptyRow);
+                rows.push(emptyRow);
+                return;
+            }
+
+            for (let application of applications) {
+                let row = this.create_application_display_mode_row(settings, keyName, application);
+                group.add(row);
+                rows.push(row);
+            }
+        };
+
+        settings.connect('changed::' + keyName, refresh);
+        refresh();
+        return group;
+    }
+
+    create_application_display_mode_row(settings, keyName, application) {
+        let title = application.name || application.appId;
+        const row = new Adw.ActionRow({
+            title,
+            subtitle: application.appId,
+        });
+        const icon = new Gtk.Image({
+            icon_name: application.iconName || 'application-x-executable-symbolic',
+            pixel_size: 24,
+            valign: Gtk.Align.CENTER,
+        });
+        const deleteButton = new Gtk.Button({
+            icon_name: 'user-trash-symbolic',
+            valign: Gtk.Align.CENTER,
+        });
+        deleteButton.add_css_class('flat');
+        deleteButton.connect('clicked', () => {
+            let applications = restoreStandaloneApplications(
+                settings.get_string(keyName)
+            );
+            settings.set_string(
+                keyName,
+                serializeStandaloneApplications(
+                    removeStandaloneApplication(applications, application.appId)
+                )
+            );
+        });
+        row.add_prefix(icon);
+        row.add_suffix(deleteButton);
+        row.activatable_widget = deleteButton;
+        return row;
+    }
 
     get_app_tab_config_group = (settings, window) => {
         const app_tab_config_group = new Adw.PreferencesGroup({
@@ -327,7 +520,23 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         });
         const app_tab_config_group = this.get_app_tab_config_group(settings, window);
         const appearance_group = this.get_appearance_group(settings);
+        const standalone_applications_group = this.get_application_display_mode_group(
+            settings,
+            SchemaKeyConstants.STANDALONE_APPLICATIONS,
+            PrefsStrings.fixedStandaloneApplications,
+            PrefsStrings.fixedStandaloneApplicationsDescription,
+            PrefsStrings.noFixedStandaloneApplications
+        );
+        const panel_applications_group = this.get_application_display_mode_group(
+            settings,
+            SchemaKeyConstants.PANEL_APPLICATIONS,
+            PrefsStrings.fixedPanelApplications,
+            PrefsStrings.fixedPanelApplicationsDescription,
+            PrefsStrings.noFixedPanelApplications
+        );
         page.add(appearance_group);
+        page.add(standalone_applications_group);
+        page.add(panel_applications_group);
         page.add(app_tab_config_group);
         window.add(page);
         window.add(this.get_about_page());

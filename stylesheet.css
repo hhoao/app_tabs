@@ -60,3 +60,16 @@
     /* background: rgba(255, 255, 255, 0.1); */
     border-radius: 8px;
 }
+
+.app-tabs-floating-bar {
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    padding: 4px 6px;
+    min-height: 32px;
+}
+
+.app-tabs-floating-drag-handle {
+    margin: 4px 4px 4px 0;
+    padding: 0 4px;
+    cursor: grab;
+}

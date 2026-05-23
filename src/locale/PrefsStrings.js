@@ -72,6 +72,9 @@ export const PrefsStrings = {
     get showAddTabButton() {
         return _('Show add tab button');
     },
+    get showRecentWindowsMenu() {
+        return _('Show recent windows menu');
+    },
     get tabAppearanceJson() {
         return _('Tab appearance (JSON)');
     },
@@ -92,5 +95,47 @@ export const PrefsStrings = {
     },
     get general() {
         return _('General');
+    },
+    get displayMode() {
+        return _('Default display mode');
+    },
+    get displayModePanel() {
+        return _('Panel');
+    },
+    get displayModeStandalone() {
+        return _('Standalone');
+    },
+    get hideTopbarInStandalone() {
+        return _('Hide top bar in standalone mode');
+    },
+    get enableDisplayModeTransition() {
+        return _('Animate display mode switching');
+    },
+    get enableDisplayModeTransitionDescription() {
+        return _('Fade the tab bar and slide the top bar when switching display modes.');
+    },
+    get displayModeTransitionDuration() {
+        return _('Transition duration (ms)');
+    },
+    get displayModeTransitionDurationDescription() {
+        return _('Length of the fade in and fade out animation (0–2000 ms).');
+    },
+    get fixedStandaloneApplications() {
+        return _('Fixed standalone applications');
+    },
+    get fixedStandaloneApplicationsDescription() {
+        return _('Applications that always use standalone mode.');
+    },
+    get noFixedStandaloneApplications() {
+        return _('No fixed standalone applications');
+    },
+    get fixedPanelApplications() {
+        return _('Fixed panel applications');
+    },
+    get fixedPanelApplicationsDescription() {
+        return _('Applications that always use panel mode.');
+    },
+    get noFixedPanelApplications() {
+        return _('No fixed panel applications');
     },
 };

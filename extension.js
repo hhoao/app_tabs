@@ -11,15 +11,21 @@ export default class AppTabsExtension extends Extension {
         globalThis.DockerContainersExtension = this;
         this._logger = new Logger("AppTabsExtension")
         this._config = new Config();
+        this._settings = this.getSettings();
         this._tabs = new TabPanel(
             {
                 config: this._config,
-                settings: this.getSettings()
+                settings: this._settings
             });
         this._logger.info("Enabling extension...");
-        Main.panel.addToStatusArea(
-            'AppTabs', this._tabs, this._config.index, this._config.side
-        )
+        // TabPanel self-initializes standalone mode in its constructor.
+        // Only add to panel status area when in panel mode.
+        if (this._settings.get_string('display-mode') === 'panel') {
+            Main.panel.addToStatusArea(
+                'AppTabs', this._tabs, this._config.index, this._config.side
+            );
+            this._tabs.attach_panel_display_mode_toggle();
+        }
     }
 
     disable() {
@@ -29,5 +35,6 @@ export default class AppTabsExtension extends Extension {
         this._config = null;
         this._tabs.destroy();
         this._tabs = null;
+        this._settings = null;
     }
 }

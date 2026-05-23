@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: app_tabs 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 11:05+0800\n"
+"POT-Creation-Date: 2026-05-11 11:26+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -108,31 +108,75 @@ msgid "Show add tab button"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:76
-msgid "Tab appearance (JSON)"
+msgid "Show recent windows menu"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:79
-msgid "Edit the JSON used to style each application tab."
+msgid "Tab appearance (JSON)"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:82
-msgid "Apply"
+msgid "Edit the JSON used to style each application tab."
 msgstr ""
 
 #: src/locale/PrefsStrings.js:85
-msgid "Format"
+msgid "Apply"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:88
-msgid "Revert"
+msgid "Format"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:91
-msgid "Restore defaults"
+msgid "Revert"
 msgstr ""
 
 #: src/locale/PrefsStrings.js:94
+msgid "Restore defaults"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:97
 msgid "General"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:100
+msgid "Default display mode"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:103
+msgid "Panel"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:106
+msgid "Standalone"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:109
+msgid "Hide top bar in standalone mode"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:112
+msgid "Fixed standalone applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:115
+msgid "Applications that always use standalone mode."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:118
+msgid "No fixed standalone applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:121
+msgid "Fixed panel applications"
+msgstr ""
+
+#: src/locale/PrefsStrings.js:124
+msgid "Applications that always use panel mode."
+msgstr ""
+
+#: src/locale/PrefsStrings.js:127
+msgid "No fixed panel applications"
 msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:8
@@ -193,4 +237,52 @@ msgstr ""
 
 #: src/locale/AppTabMenuStrings.js:50
 msgid "Force kill (dangerous)"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:53
+msgid "Fixed standalone mode"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:56
+msgid "Fixed panel mode"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:59
+msgid "Current application windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:62
+msgid "Current all applications windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:65
+msgid "No current windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:68
+msgid "Recently closed windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:71
+msgid "No recently closed windows"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:74
+msgid "Untitled window"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:77
+msgid "just now"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:80
+msgid "m ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:83
+msgid "h ago"
+msgstr ""
+
+#: src/locale/AppTabMenuStrings.js:86
+msgid "d ago"
 msgstr ""

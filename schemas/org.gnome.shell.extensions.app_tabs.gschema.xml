@@ -10,6 +10,9 @@
         <key name="show-add-tab-button" type="b">
             <default>true</default>
         </key>
+        <key name="show-recent-windows-menu" type="b">
+            <default>true</default>
+        </key>
         <key name="panel-max-width" type="i">
             <default>400</default>
         </key>
@@ -46,6 +49,34 @@
         </key>
         <key name="tabs-order" type="s">
             <default>"{}"</default>
+        </key>
+        <key name="recent-windows-state" type="s">
+            <default>'{"opened":[],"closed":[]}'</default>
+        </key>
+        <key name="display-mode" type="s">
+            <choices>
+                <choice value="panel"/>
+                <choice value="standalone"/>
+            </choices>
+            <default>"panel"</default>
+        </key>
+        <key name="hide-topbar-in-standalone" type="b">
+            <default>true</default>
+        </key>
+        <key name="enable-display-mode-transition" type="b">
+            <default>true</default>
+        </key>
+        <key name="display-mode-transition-duration" type="i">
+            <default>200</default>
+        </key>
+        <key name="standalone-bar-position" type="s">
+            <default>"{\"x\":0,\"y\":0}"</default>
+        </key>
+        <key name="standalone-applications" type="s">
+            <default>"[]"</default>
+        </key>
+        <key name="panel-applications" type="s">
+            <default>"[]"</default>
         </key>
     </schema>
 </schemalist>

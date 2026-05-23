@@ -1,0 +1,92 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch / tag / sha). Leave empty for current."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Package extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.ref }}
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gjs libglib2.0-bin zip
+
+      - name: Check
+        run: bash scripts/check.sh
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"
+          else
+            ref="${{ github.event.inputs.ref }}"
+            if [[ "$ref" == refs/tags/* ]]; then
+              tag="${ref#refs/tags/}"
+            elif [[ "$ref" == v* ]]; then
+              tag="$ref"
+            else
+              tag="manual-${GITHUB_SHA::7}"
+            fi
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "package_name=app_tabs_${tag}" >> "$GITHUB_OUTPUT"
+
+      - name: Package
+        run: bash scripts/package.sh ${{ steps.version.outputs.package_name }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: ${{ steps.version.outputs.package_name }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-zip
+          path: release-files
+
+      - name: Generate release notes (Conventional Commits)
+        id: git-cliff
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --latest --strip header --github-repo ${{ github.repository }}
+        env:
+          OUTPUT: release-notes.md
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-files/*
+          body_path: ${{ steps.git-cliff.outputs.changelog }}
+          fail_on_unmatched_files: true

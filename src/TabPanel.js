@@ -13,6 +13,34 @@ import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { shouldStartPreparedDrag } from './utils/DragPreparation.js';
 import { isDarkTheme } from './utils/ThemeStyle.js';
+import {
+    createWindowSnapshot,
+    recordRecentSnapshot,
+    restoreRecentWindowsState,
+    serializeRecentWindowsState,
+} from './utils/WindowSessionStore.js';
+import {
+    getProcessLaunchContext,
+    shouldUseCommandForRestore,
+} from './utils/ProcessLaunchContext.js';
+import { FloatingBar } from './FloatingBar.js';
+import {
+    applyOpacityTransition,
+    applyPanelBoxYTransition,
+} from './utils/DisplayModeTransition.js';
+import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
+import {
+    addOrUpdateStandaloneApplication,
+    removeStandaloneApplication,
+    restoreStandaloneApplications,
+    serializeStandaloneApplications,
+    standaloneApplicationIncludes,
+} from './utils/StandaloneApplications.js';
+
+const RECENT_WINDOWS_MENU_MAX_HEIGHT = 520;
+const RECENT_CLOSED_DISPLAY_LIMIT = 10;
+const RECENT_WINDOW_LABEL_MAX_LENGTH = 42;
+const DISPLAY_MODE_TOGGLE_ROLE = 'AppTabsDisplayModeToggle';
 
 export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMenu.Button {
     _init(props) {
@@ -25,6 +53,16 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._update_windows_later_id = 0;
         this._current_tabs_count = 0;
         this._menu_manager = new PopupMenu.PopupMenuManager(this);
+        this._recent_windows_state = restoreRecentWindowsState(
+            this._settings.get_string(SchemaKeyConstants.RECENT_WINDOWS_STATE)
+        );
+        this._standalone_applications = restoreStandaloneApplications(
+            this._settings.get_string(SchemaKeyConstants.STANDALONE_APPLICATIONS)
+        );
+        this._panel_applications = restoreStandaloneApplications(
+            this._settings.get_string(SchemaKeyConstants.PANEL_APPLICATIONS)
+        );
+        this._pending_restore_snapshots = [];
 
         // Drag & drop
         this._dragging_tab = null;
@@ -39,28 +77,56 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this.set_panel_max_width(this._settings.get_int(SchemaKeyConstants.PANEL_MAX_WIDTH));
         this.only_display_tabs_on_current_workspace = this._settings.get_boolean(SchemaKeyConstants.ONLY_DISPLAY_TABS_ON_CURRENT_WORKSPACE)
         this.show_add_tab_button = this._settings.get_boolean(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON);
+        this.show_recent_windows_menu = this._settings.get_boolean(SchemaKeyConstants.SHOW_RECENT_WINDOWS_MENU);
+        this._display_mode = this._settings.get_string(SchemaKeyConstants.DISPLAY_MODE);
+        this._saved_panel_index = 0;
+        this._floating_bar = null;
+        this._panel_display_mode_toggle = null;
+        this._topbar_was_hidden = false;
+        this._topbar_chrome_adjusted = false;
+        this._topbar_base_y = 0;
+        this._topbar_animation_active = false;
+        this._switching_display_mode = false;
+        this._refreshing_display_mode_menu = false;
 
         this._tab_controls = new TabControls({
             isDarkMode: this._is_dark_mode(),
             panelHeight: this._get_panel_height(),
             onAddTab: this._open_new_tab_for_target_app.bind(this),
+            onShowRecentWindows: this._toggle_recent_windows_menu.bind(this),
+            onToggleDisplayMode: this.toggle_display_mode.bind(this),
+            onShowDisplayModeMenu: this._toggle_display_mode_menu.bind(this),
         });
         this._scroll_view.add_child(this._tab_controls.actor);
         this._tab_panel_container = new St.BoxLayout({ style_class: 'app-tabs-container' });
+        this._tab_panel_container.add_child(this._tab_controls.get_recent_windows_button());
+        this._tab_panel_container.add_child(this._tab_controls.get_recent_windows_divider());
         this._tab_panel_container.add_child(this._scroll_view);
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_divider());
         this._tab_panel_container.add_child(this._tab_controls.get_add_tab_button());
         this.add_child(this._tab_panel_container);
         this._init_pool_tabs();
+        this._init_recent_windows_menu();
+        this._init_display_mode_menu();
+        this._tab_controls.set_recent_windows_visible(this.show_recent_windows_menu);
 
         Main.overview.connectObject(
-            'hiding', this._sync.bind(this),
-            'showing', this._reset_all_tabs.bind(this), this);
+            'hiding', () => {
+                this._sync();
+                if (this._topbar_was_hidden)
+                    this._hide_topbar_for_standalone();
+            },
+            'showing', () => {
+                this._reset_all_tabs();
+                if (this._topbar_was_hidden)
+                    this._show_topbar_temporarily();
+            }, this);
         Shell.WindowTracker.get_default().connectObject('notify::focus-app',
             this._focus_app_changed.bind(this), this);
         global.window_manager.connectObject('switch-workspace',
             this._on_workspace_switched.bind(this), this);
         global.display.connectObject('notify::focus-window', this.on_focus_window_changed.bind(this), this);
+        global.display.connectObject('window-created', this._on_window_created.bind(this), this);
         Main.panel.connectObject(
             'notify::height', this._on_panel_height_changed.bind(this),
             'style-changed', this._on_panel_height_changed.bind(this),
@@ -77,6 +143,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         Main.layoutManager.connectObject('startup-complete', this._on_shell_startup.bind(this), this);
 
         this._listen_settings();
+
+        if (this._display_mode === 'standalone')
+            this._init_standalone_display();
     }
 
     get_changed_key(key) {
@@ -97,6 +166,11 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._settings.connectObject(
             this.get_changed_key(SchemaKeyConstants.SHOW_ADD_TAB_BUTTON),
             this._on_show_add_tab_button_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.SHOW_RECENT_WINDOWS_MENU),
+            this._on_show_recent_windows_menu_changed.bind(this),
             this,
         );
         this._settings.connectObject(
@@ -121,6 +195,26 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 this,
             );
         }
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.DISPLAY_MODE),
+            this._on_display_mode_setting_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE),
+            this._on_hide_topbar_setting_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.STANDALONE_APPLICATIONS),
+            this._on_standalone_applications_changed.bind(this),
+            this,
+        );
+        this._settings.connectObject(
+            this.get_changed_key(SchemaKeyConstants.PANEL_APPLICATIONS),
+            this._on_panel_applications_changed.bind(this),
+            this,
+        );
     }
 
     _on_only_display_tabs_on_current_workspace_changed(settings, key) {
@@ -130,6 +224,23 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
     _on_show_add_tab_button_changed(settings, key) {
         this.show_add_tab_button = settings.get_boolean(key);
         this._update_add_tab_visibility(this._current_tabs_count > 0);
+    }
+
+    _on_show_recent_windows_menu_changed(settings, key) {
+        this.show_recent_windows_menu = settings.get_boolean(key);
+        this._tab_controls.set_recent_windows_visible(this.show_recent_windows_menu);
+    }
+
+    _on_standalone_applications_changed(settings, key) {
+        this._standalone_applications = restoreStandaloneApplications(settings.get_string(key));
+        this._refresh_display_mode_menu();
+        this._apply_display_mode_for_target_app();
+    }
+
+    _on_panel_applications_changed(settings, key) {
+        this._panel_applications = restoreStandaloneApplications(settings.get_string(key));
+        this._refresh_display_mode_menu();
+        this._apply_display_mode_for_target_app();
     }
 
     _on_panel_max_width_changed(settings, key) {
@@ -230,6 +341,358 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._target_app.open_new_window(-1);
     }
 
+    _init_display_mode_menu() {
+        this._display_mode_menu = new PopupMenu.PopupMenu(
+            this._tab_controls.get_display_mode_toggle_button(),
+            0.0,
+            St.Side.TOP
+        );
+        this._display_mode_menu.actor.add_style_class_name('panel-menu');
+        this._fixed_standalone_menu_item = new PopupMenu.PopupSwitchMenuItem(
+            AppTabMenuStrings.fixedStandaloneForCurrentApplication,
+            false
+        );
+        this._fixed_standalone_menu_item.connect('toggled', (_item, state) => {
+            this._set_target_app_fixed_display_mode('standalone', state);
+        });
+        this._fixed_panel_menu_item = new PopupMenu.PopupSwitchMenuItem(
+            AppTabMenuStrings.fixedPanelForCurrentApplication,
+            false
+        );
+        this._fixed_panel_menu_item.connect('toggled', (_item, state) => {
+            this._set_target_app_fixed_display_mode('panel', state);
+        });
+        this._display_mode_menu.addMenuItem(this._fixed_standalone_menu_item);
+        this._display_mode_menu.addMenuItem(this._fixed_panel_menu_item);
+        Main.uiGroup.add_child(this._display_mode_menu.actor);
+        this._display_mode_menu.actor.hide();
+        this._menu_manager.addMenu(this._display_mode_menu);
+    }
+
+    _toggle_display_mode_menu() {
+        if (!this._display_mode_menu)
+            return;
+
+        this._refresh_display_mode_menu();
+        this._display_mode_menu.toggle();
+    }
+
+    _refresh_display_mode_menu() {
+        if (!this._fixed_standalone_menu_item || !this._fixed_panel_menu_item)
+            return;
+
+        let appId = this._target_app?.get_id?.() ?? '';
+        let hasTargetApp = Boolean(appId);
+        this._refreshing_display_mode_menu = true;
+        this._fixed_standalone_menu_item.setSensitive(hasTargetApp);
+        this._fixed_panel_menu_item.setSensitive(hasTargetApp);
+        this._fixed_standalone_menu_item.setToggleState(
+            standaloneApplicationIncludes(this._standalone_applications, appId)
+        );
+        this._fixed_panel_menu_item.setToggleState(
+            standaloneApplicationIncludes(this._panel_applications, appId)
+        );
+        this._refreshing_display_mode_menu = false;
+    }
+
+    _set_target_app_fixed_display_mode(mode, isFixed) {
+        if (this._refreshing_display_mode_menu)
+            return;
+
+        let record = this._create_standalone_application_record(this._target_app);
+        if (!record.appId)
+            return;
+
+        let standaloneRecords = removeStandaloneApplication(this._standalone_applications, record.appId);
+        let panelRecords = removeStandaloneApplication(this._panel_applications, record.appId);
+        if (isFixed && mode === 'standalone')
+            standaloneRecords = addOrUpdateStandaloneApplication(standaloneRecords, record);
+        if (isFixed && mode === 'panel')
+            panelRecords = addOrUpdateStandaloneApplication(panelRecords, record);
+
+        this._settings.set_string(
+            SchemaKeyConstants.STANDALONE_APPLICATIONS,
+            serializeStandaloneApplications(standaloneRecords)
+        );
+        this._settings.set_string(
+            SchemaKeyConstants.PANEL_APPLICATIONS,
+            serializeStandaloneApplications(panelRecords)
+        );
+
+        this._apply_display_mode_for_target_app();
+    }
+
+    _create_standalone_application_record(app) {
+        let icon = app?.get_icon?.();
+        return {
+            appId: app?.get_id?.() ?? '',
+            name: app?.get_name?.() ?? app?.get_id?.() ?? '',
+            iconName: icon?.get_names?.()?.[0] ?? icon?.to_string?.() ?? '',
+        };
+    }
+
+    _init_recent_windows_menu() {
+        this._recent_windows_menu = new PopupMenu.PopupMenu(
+            this._tab_controls.get_recent_windows_button(),
+            0.0,
+            St.Side.TOP
+        );
+        this._recent_windows_menu.actor.add_style_class_name('panel-menu');
+        this._recent_windows_scroll_view = new St.ScrollView({
+            style_class: 'app-tabs-recent-windows-scroll-view',
+            overlay_scrollbars: true,
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.NEVER,
+        });
+        this._recent_windows_scroll_view.set_style('max-height: 520px;');
+        this._recent_windows_section = new PopupMenu.PopupMenuSection();
+        this._recent_windows_scroll_view.add_child(this._recent_windows_section.actor);
+        this._recent_windows_menu.box.add_child(this._recent_windows_scroll_view);
+        this._connect_recent_windows_scroll_handler(this._recent_windows_scroll_view);
+        this._connect_recent_windows_scroll_handler(this._recent_windows_section.actor);
+        Main.uiGroup.add_child(this._recent_windows_menu.actor);
+        this._recent_windows_menu.actor.hide();
+        this._menu_manager.addMenu(this._recent_windows_menu);
+        this._recent_windows_menu.connect('open-state-changed', (_menu, isOpen) => {
+            if (!isOpen)
+                this._hide_recent_window_tooltip();
+        });
+        this._init_recent_windows_tooltip();
+    }
+
+    _init_recent_windows_tooltip() {
+        this._recent_windows_tooltip = new St.Label({
+            style_class: 'app-tabs-recent-window-tooltip',
+            visible: false,
+        });
+        this._recent_windows_tooltip.set_style(
+            'max-width: 480px;padding:8px 10px;border-radius:8px;' +
+            'background-color:rgba(32,32,32,0.96);color:white;'
+        );
+        Main.uiGroup.add_child(this._recent_windows_tooltip);
+    }
+
+    _toggle_recent_windows_menu() {
+        this._refresh_recent_windows_menu();
+        this._recent_windows_menu.toggle();
+    }
+
+    _refresh_recent_windows_menu() {
+        this._recent_windows_section.removeAll();
+
+        let currentApplicationWindows = this._get_current_application_windows();
+        this._add_recent_windows_submenu(
+            AppTabMenuStrings.currentApplicationWindows,
+            currentApplicationWindows.map(window => {
+                let app = this._get_app_for_window(window);
+                return {
+                    title: window.get_title() || app?.get_name?.() || '',
+                    appName: app?.get_name?.() || '',
+                    timestamp: Date.now(),
+                    icon: app?.get_icon?.() ?? null,
+                    _window: window,
+                };
+            }),
+            item => {
+                item._window?.activate(global.get_current_time());
+            },
+            AppTabMenuStrings.noCurrentWindows,
+            'focus-windows-symbolic'
+        );
+
+        let allApplicationWindows = this._get_all_application_windows();
+        this._add_recent_windows_submenu(
+            AppTabMenuStrings.currentAllApplicationsWindows,
+            allApplicationWindows.map(window => {
+                let app = this._get_app_for_window(window);
+                return {
+                    title: window.get_title() || app?.get_name?.() || '',
+                    appName: app?.get_name?.() || '',
+                    timestamp: Date.now(),
+                    icon: app?.get_icon?.() ?? null,
+                    _window: window,
+                };
+            }),
+            item => {
+                item._window?.activate(global.get_current_time());
+            },
+            AppTabMenuStrings.noCurrentWindows,
+            'focus-windows-symbolic'
+        );
+
+        this._add_recent_windows_submenu(
+            AppTabMenuStrings.recentlyClosedWindows,
+            this._recent_windows_state.closed.slice(0, RECENT_CLOSED_DISPLAY_LIMIT),
+            snapshot => this._restore_recent_window_snapshot(snapshot),
+            AppTabMenuStrings.noRecentlyClosedWindows,
+            'window-close-symbolic'
+        );
+    }
+
+    _add_recent_windows_submenu(title, items, onActivate, emptyText, iconName) {
+        let submenu = new PopupMenu.PopupSubMenuMenuItem(`${title} (${items.length})`);
+        this._recent_windows_section.addMenuItem(submenu);
+        this._connect_recent_windows_scroll_handler(submenu);
+        this._connect_recent_windows_scroll_handler(submenu.menu.actor);
+
+        if (!items.length) {
+            let emptyItem = this._add_icon_menu_item(emptyText, 'window-close-symbolic');
+            emptyItem.setSensitive(false);
+            submenu.menu.addMenuItem(emptyItem);
+            this._connect_recent_windows_scroll_handler(emptyItem);
+            submenu.setSubmenuShown?.(true);
+            submenu.menu.open(false);
+            return;
+        }
+
+        for (let item of items) {
+            let tooltipText = this._format_recent_window_label(item);
+            let menuItem = this._add_icon_menu_item(
+                this._truncate_recent_window_label(tooltipText),
+                item.icon ?? item.iconName ?? iconName
+            );
+            this._bind_recent_window_tooltip(menuItem, tooltipText);
+            menuItem.connect('activate', () => {
+                onActivate(item);
+            });
+            submenu.menu.addMenuItem(menuItem);
+            this._connect_recent_windows_scroll_handler(menuItem);
+        }
+        submenu.setSubmenuShown?.(true);
+        submenu.menu.open(false);
+    }
+
+    _add_icon_menu_item(label, iconSource) {
+        let item = new PopupMenu.PopupMenuItem(label);
+        this._add_icon_to_menu_item(item, iconSource);
+        return item;
+    }
+
+    _truncate_recent_window_label(label) {
+        if (label.length <= RECENT_WINDOW_LABEL_MAX_LENGTH)
+            return label;
+
+        return `${label.slice(0, RECENT_WINDOW_LABEL_MAX_LENGTH - 1)}…`;
+    }
+
+    _bind_recent_window_tooltip(item, tooltipText) {
+        item.connect('notify::hover', () => {
+            if (item.hover)
+                this._show_recent_window_tooltip(item, tooltipText);
+            else
+                this._hide_recent_window_tooltip();
+        });
+    }
+
+    _show_recent_window_tooltip(item, text) {
+        if (!this._recent_windows_tooltip || !text)
+            return;
+
+        this._recent_windows_tooltip.set_text(text);
+        let [stageX, stageY] = item.actor.get_transformed_position();
+        let itemWidth = item.actor.width;
+        let tooltipX = stageX + itemWidth + 8;
+        let tooltipY = stageY;
+
+        this._recent_windows_tooltip.set_position(tooltipX, tooltipY);
+        this._recent_windows_tooltip.show();
+    }
+
+    _hide_recent_window_tooltip() {
+        this._recent_windows_tooltip?.hide();
+    }
+
+    _add_icon_to_menu_item(item, iconSource) {
+        let icon = iconSource instanceof Gio.Icon
+            ? new St.Icon({
+                gicon: iconSource,
+                style_class: 'popup-menu-icon',
+                icon_size: 16,
+            })
+            : new St.Icon({
+                icon_name: iconSource || 'application-x-executable-symbolic',
+                style_class: 'popup-menu-icon',
+                icon_size: 16,
+            });
+        item.insert_child_at_index(icon, 0);
+        item.label.x_expand = true;
+    }
+
+    _connect_recent_windows_scroll_handler(actor) {
+        actor?.connect?.('scroll-event', (_actor, event) => {
+            let scrollAdjustment = this._recent_windows_scroll_view?.get_vadjustment?.();
+            if (!scrollAdjustment)
+                return Clutter.EVENT_PROPAGATE;
+
+            let delta = scrollAdjustment.step_increment || 40;
+            let direction = event.get_scroll_direction();
+            if (direction === Clutter.ScrollDirection.DOWN ||
+                direction === Clutter.ScrollDirection.RIGHT) {
+                scrollAdjustment.set_value(Math.min(
+                    scrollAdjustment.upper - scrollAdjustment.page_size,
+                    scrollAdjustment.get_value() + delta
+                ));
+                return Clutter.EVENT_STOP;
+            }
+            if (direction === Clutter.ScrollDirection.UP ||
+                direction === Clutter.ScrollDirection.LEFT) {
+                scrollAdjustment.set_value(Math.max(
+                    scrollAdjustment.lower,
+                    scrollAdjustment.get_value() - delta
+                ));
+                return Clutter.EVENT_STOP;
+            }
+
+            return Clutter.EVENT_PROPAGATE;
+        });
+    }
+
+    _format_recent_window_label(snapshot) {
+        let title = snapshot.title || snapshot.appName || AppTabMenuStrings.untitledWindow;
+        let appName = snapshot.appName ? ` - ${snapshot.appName}` : '';
+        let relativeTime = this._format_relative_time(snapshot.timestamp);
+        return `${title}${appName} · ${relativeTime}`;
+    }
+
+    _format_relative_time(timestamp) {
+        let ageMs = Math.max(0, Date.now() - Number(timestamp || Date.now()));
+        let minutes = Math.floor(ageMs / 60000);
+        if (minutes < 1)
+            return AppTabMenuStrings.justNow;
+        if (minutes < 60)
+            return `${minutes}${AppTabMenuStrings.minuteSuffix}`;
+
+        let hours = Math.floor(minutes / 60);
+        if (hours < 24)
+            return `${hours}${AppTabMenuStrings.hourSuffix}`;
+
+        return `${Math.floor(hours / 24)}${AppTabMenuStrings.daySuffix}`;
+    }
+
+    _get_current_application_windows() {
+        if (!this._target_app)
+            return [];
+
+        return this._sort_current_windows(this._target_app.get_windows()
+            .filter(window => !window.skip_taskbar));
+    }
+
+    _get_all_application_windows() {
+        return this._sort_current_windows(global.display.list_all_windows()
+            .filter(window => !window.skip_taskbar));
+    }
+
+    _sort_current_windows(windows) {
+        return windows
+            .sort((a, b) => {
+                if (a.has_focus?.())
+                    return -1;
+                if (b.has_focus?.())
+                    return 1;
+                return 0;
+            });
+    }
+
     _update_add_tab_visibility(hasWindows) {
         this._tab_controls.set_add_tab_visible(this.show_add_tab_button && hasWindows);
     }
@@ -252,6 +715,598 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
             this._tabs_pool[i].on_active(window);
         }
         this._tab_controls.refresh_active_state();
+    }
+
+    _on_window_created(display, window) {
+        let app = this._get_app_for_window(window);
+        if (!app || window.skip_taskbar)
+            return;
+
+        this._record_recent_window_snapshot(app, window, 'opened');
+        this._maybe_restore_pending_window(app, window);
+    }
+
+    _get_app_for_window(window) {
+        try {
+            return Shell.WindowTracker.get_default().get_window_app(window);
+        } catch (_e) {
+            return null;
+        }
+    }
+
+    _record_recent_window_snapshot(app, window, section) {
+        if (!app || !window || window.skip_taskbar)
+            return;
+
+        let pid = window.get_pid?.() ?? 0;
+        let baseSnapshot = createWindowSnapshot({
+            app,
+            window,
+            timestamp: Date.now(),
+        });
+        getProcessLaunchContext(pid).then(({ command, cwd }) => {
+            let snapshot = createWindowSnapshot({
+                app: null,
+                window: null,
+                timestamp: baseSnapshot.timestamp,
+                command,
+                cwd,
+            });
+            snapshot = {
+                ...baseSnapshot,
+                command: snapshot.command,
+                cwd: snapshot.cwd,
+            };
+            this._recent_windows_state = recordRecentSnapshot(
+                this._recent_windows_state,
+                section,
+                snapshot
+            );
+            this._settings.set_string(
+                SchemaKeyConstants.RECENT_WINDOWS_STATE,
+                serializeRecentWindowsState(this._recent_windows_state)
+            );
+        }).catch((_e) => {
+            this._recent_windows_state = recordRecentSnapshot(
+                this._recent_windows_state,
+                section,
+                baseSnapshot
+            );
+            this._settings.set_string(
+                SchemaKeyConstants.RECENT_WINDOWS_STATE,
+                serializeRecentWindowsState(this._recent_windows_state)
+            );
+        });
+    }
+
+    _restore_recent_window_snapshot(snapshot) {
+        if (!snapshot)
+            return;
+
+        if (snapshot.command?.length && shouldUseCommandForRestore(snapshot.command)) {
+            this._pending_restore_snapshots.unshift({
+                snapshot,
+                expiresAt: Date.now() + 10000,
+            });
+            this._launch_snapshot_command(snapshot);
+            return;
+        }
+
+        let shellApp = snapshot.appId
+            ? Shell.AppSystem.get_default().lookup_app(snapshot.appId)
+            : null;
+
+        if (shellApp) {
+            this._pending_restore_snapshots.unshift({
+                snapshot,
+                expiresAt: Date.now() + 10000,
+            });
+            if (shellApp.can_open_new_window?.())
+                shellApp.open_new_window(snapshot.workspaceIndex ?? -1);
+            else
+                shellApp.launch(0, snapshot.workspaceIndex ?? -1, Shell.AppLaunchGpu.DEFAULT);
+            return;
+        }
+
+        if (snapshot.command?.length) {
+            try {
+                Gio.Subprocess.new(snapshot.command, Gio.SubprocessFlags.NONE);
+            } catch (_e) {
+            }
+        }
+    }
+
+    _launch_snapshot_command(snapshot) {
+        try {
+            let launcher = new Gio.SubprocessLauncher({
+                flags: Gio.SubprocessFlags.NONE,
+            });
+            if (snapshot.cwd)
+                launcher.set_cwd(snapshot.cwd);
+            launcher.spawnv(snapshot.command);
+        } catch (_e) {
+            let shellApp = snapshot.appId
+                ? Shell.AppSystem.get_default().lookup_app(snapshot.appId)
+                : null;
+            if (shellApp)
+                shellApp.launch(0, snapshot.workspaceIndex ?? -1, Shell.AppLaunchGpu.DEFAULT);
+        }
+    }
+
+    _maybe_restore_pending_window(app, window) {
+        if (!this._pending_restore_snapshots?.length)
+            return;
+
+        let now = Date.now();
+        this._pending_restore_snapshots = this._pending_restore_snapshots
+            .filter(item => item.expiresAt > now);
+        let index = this._pending_restore_snapshots.findIndex(item =>
+            this._snapshot_matches_window(item.snapshot, app, window));
+        if (index === -1)
+            return;
+
+        let [{ snapshot }] = this._pending_restore_snapshots.splice(index, 1);
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._apply_snapshot_to_window(window, snapshot);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _snapshot_matches_window(snapshot, app, window) {
+        let appId = app?.get_id?.() ?? '';
+        let appName = app?.get_name?.() ?? '';
+        let wmClass = '';
+        try {
+            wmClass = window?.get_wm_class?.() ?? '';
+        } catch (_e) {
+        }
+
+        return Boolean(
+            (snapshot.appId && snapshot.appId === appId) ||
+            (snapshot.wmClass && snapshot.wmClass === wmClass) ||
+            (!snapshot.appId && snapshot.appName && snapshot.appName === appName)
+        );
+    }
+
+    _apply_snapshot_to_window(window, snapshot) {
+        if (!window || !snapshot)
+            return;
+
+        try {
+            if (snapshot.monitorIndex !== null &&
+                snapshot.monitorIndex >= 0 &&
+                snapshot.monitorIndex < global.display.get_n_monitors()) {
+                window.move_to_monitor(snapshot.monitorIndex);
+            }
+        } catch (_e) {
+        }
+
+        try {
+            if (snapshot.workspaceIndex !== null && snapshot.workspaceIndex >= 0) {
+                this._create_enough_workspaces(snapshot.workspaceIndex);
+                window.change_workspace_by_index(snapshot.workspaceIndex, false);
+            }
+        } catch (_e) {
+        }
+
+        try {
+            if (snapshot.state?.isSticky && !window.is_on_all_workspaces())
+                window.stick();
+            if (snapshot.state?.isAbove && !window.is_above())
+                window.make_above();
+            if (snapshot.state?.isMaximized && !window.is_maximized())
+                window.maximize();
+        } catch (_e) {
+        }
+
+        try {
+            let rect = snapshot.rect;
+            if (rect && !snapshot.state?.isMaximized) {
+                window.move_frame(true, rect.x, rect.y);
+                window.move_resize_frame(true, rect.x, rect.y, rect.width, rect.height);
+            }
+        } catch (_e) {
+        }
+    }
+
+    _create_enough_workspaces(workspaceIndex) {
+        let workspaceManager = global.workspace_manager;
+        while (workspaceManager.n_workspaces <= workspaceIndex) {
+            workspaceManager.append_new_workspace(false, global.get_current_time());
+            workspaceManager.get_workspace_by_index(workspaceManager.n_workspaces - 1)._keepAliveId = true;
+        }
+    }
+
+    _init_standalone_display() {
+        if (this._floating_bar)
+            return;
+
+        let statusArea = Main.panel.statusArea;
+        let children = Object.keys(statusArea);
+        this._saved_panel_index = children.indexOf('AppTabs');
+        if (this._saved_panel_index === -1)
+            this._saved_panel_index = this._config.index ?? 10;
+
+        this._hide_panel_status_items();
+
+        this._floating_bar = new FloatingBar({
+            tabPanel: this,
+            settings: this._settings,
+        });
+        if (this._tab_panel_container.get_parent())
+            this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
+        this._floating_bar.add_child(this._tab_panel_container);
+        this._move_display_mode_toggle_to_standalone();
+        this._floating_bar.attach();
+        this._tab_controls.set_display_mode_icon('standalone');
+        this._apply_topbar_visibility(true);
+
+        this._hide_empty_panel_shell();
+    }
+
+    toggle_display_mode() {
+        if (this._switching_display_mode)
+            return;
+
+        this._switching_display_mode = true;
+        if (this._display_mode === 'panel') {
+            this._enter_standalone_mode();
+        } else {
+            this._enter_panel_mode();
+        }
+        GLib.timeout_add(GLib.PRIORITY_DEFAULT, 300, () => {
+            this._switching_display_mode = false;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _enter_standalone_mode() {
+        if (this._display_mode === 'standalone')
+            return;
+
+        this._display_mode = 'standalone';
+
+        let statusArea = Main.panel.statusArea;
+        let children = Object.keys(statusArea);
+        this._saved_panel_index = children.indexOf('AppTabs');
+        if (this._saved_panel_index === -1)
+            this._saved_panel_index = this._config.index ?? 10;
+
+        this._hide_panel_status_items();
+
+        if (!this._floating_bar) {
+            this._floating_bar = new FloatingBar({
+                tabPanel: this,
+                settings: this._settings,
+            });
+        }
+        if (this._tab_panel_container.get_parent())
+            this._tab_panel_container.get_parent().remove_child(this._tab_panel_container);
+        this._floating_bar.add_child(this._tab_panel_container);
+        this._move_display_mode_toggle_to_standalone();
+        this._floating_bar.attach();
+        this._tab_controls.set_display_mode_icon('standalone');
+        this._apply_topbar_visibility(true);
+
+        applyOpacityTransition(this, 0, this._settings, () => {
+            if (this._display_mode === 'standalone')
+                this._hide_empty_panel_shell();
+        });
+    }
+
+    _enter_panel_mode() {
+        if (this._display_mode === 'panel')
+            return;
+
+        this._display_mode = 'panel';
+
+        this._apply_topbar_visibility(false);
+        this._reparent_tab_panel_container_to_panel();
+
+        if (this._floating_bar)
+            this._floating_bar.detach();
+
+        this._finalize_panel_mode_entry();
+    }
+
+    _reparent_tab_panel_container_to_panel() {
+        let container = this._tab_panel_container;
+        let panelContainer = this.container;
+        let parent = container.get_parent();
+
+        if (parent === panelContainer)
+            return;
+
+        if (parent)
+            parent.remove_child(container);
+
+        this.add_child(container);
+    }
+
+    _finalize_panel_mode_entry() {
+        if (!this._tab_panel_container.get_parent())
+            this._reparent_tab_panel_container_to_panel();
+
+        this._ensure_app_tabs_in_status_area();
+        this.attach_panel_display_mode_toggle();
+        this._show_panel_status_items();
+        this._refresh_visible_tabs_after_mode_change();
+        this._tab_controls.set_display_mode_icon('panel');
+
+        this.remove_transition?.('opacity');
+        this.opacity = 0;
+        applyOpacityTransition(this, 255, this._settings);
+    }
+
+    _hide_empty_panel_shell() {
+        this.container?.hide();
+    }
+
+    _refresh_visible_tabs_after_mode_change() {
+        for (let i = 0; i < this._current_tabs_count; i++) {
+            let tab = this._tabs_pool[i];
+            tab.remove_all_transitions?.();
+            tab.opacity = 255;
+            tab.show();
+        }
+        this._tab_panel_container.show();
+        this._scroll_view.show();
+        this._tab_controls.actor.show();
+        this._tab_controls.refresh_active_state();
+
+        if (this._target_app)
+            this._update_windows_section(this._target_app);
+    }
+
+    attach_panel_display_mode_toggle() {
+        if (this._display_mode !== 'panel')
+            return;
+
+        this._move_display_mode_toggle_to_panel();
+    }
+
+    _move_display_mode_toggle_to_standalone() {
+        this._hide_panel_display_mode_toggle();
+        let button = this._tab_controls.get_display_mode_toggle_button();
+        if (button.get_parent())
+            button.get_parent().remove_child(button);
+        this._tab_panel_container.add_child(button);
+    }
+
+    _move_display_mode_toggle_to_panel() {
+        let button = this._tab_controls.get_display_mode_toggle_button();
+        if (button.get_parent())
+            button.get_parent().remove_child(button);
+
+        if (!this._panel_display_mode_toggle) {
+            this._panel_display_mode_toggle = new PanelMenu.Button(1.0, null, true);
+            this._panel_display_mode_toggle.add_style_class_name('app-tabs-display-mode-panel-toggle');
+        }
+        this._panel_display_mode_toggle.add_child(button);
+        this._ensure_display_mode_toggle_in_status_area();
+        this._panel_display_mode_toggle.show();
+    }
+
+    _hide_panel_status_items() {
+        this._hide_panel_display_mode_toggle();
+        this._hide_empty_panel_shell();
+    }
+
+    _show_panel_status_items() {
+        this.show();
+        this.container?.show();
+        this._tab_panel_container?.show();
+        this._panel_display_mode_toggle?.show();
+    }
+
+    _ensure_app_tabs_in_status_area() {
+        let statusItem = Main.panel.statusArea.AppTabs;
+        if (statusItem && statusItem !== this) {
+            this._remove_actor_from_parent(statusItem.container);
+            statusItem.destroy();
+            delete Main.panel.statusArea.AppTabs;
+        }
+
+        if (Main.panel.statusArea.AppTabs !== this) {
+            if (this._saved_panel_index < 0)
+                this._saved_panel_index = this._config.index ?? 10;
+            Main.panel.addToStatusArea('AppTabs', this, this._saved_panel_index, this._config.side);
+        }
+    }
+
+    _ensure_display_mode_toggle_in_status_area() {
+        let statusItem = Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        if (statusItem && statusItem !== this._panel_display_mode_toggle) {
+            this._remove_actor_from_parent(statusItem.container);
+            statusItem.destroy();
+            delete Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        }
+
+        if (!this._panel_display_mode_toggle)
+            return;
+
+        if (Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE] !== this._panel_display_mode_toggle) {
+            Main.panel.addToStatusArea(
+                DISPLAY_MODE_TOGGLE_ROLE,
+                this._panel_display_mode_toggle,
+                this._saved_panel_index + 1,
+                this._config.side
+            );
+        }
+    }
+
+    _hide_panel_display_mode_toggle() {
+        this._panel_display_mode_toggle?.hide();
+    }
+
+    _remove_panel_display_mode_toggle() {
+        let statusItem = Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        let button = this._tab_controls?.get_display_mode_toggle_button?.();
+        if (button?.get_parent())
+            button.get_parent().remove_child(button);
+
+        if (statusItem) {
+            this._remove_actor_from_parent(statusItem.container);
+            if (statusItem !== this._panel_display_mode_toggle)
+                statusItem.destroy();
+            delete Main.panel.statusArea[DISPLAY_MODE_TOGGLE_ROLE];
+        }
+        this._remove_actor_from_parent(this._panel_display_mode_toggle?.container);
+        this._panel_display_mode_toggle?.destroy();
+        this._panel_display_mode_toggle = null;
+    }
+
+    _remove_from_panel_status_area() {
+        this._remove_actor_from_parent(this.container);
+        let statusItem = Main.panel.statusArea.AppTabs;
+        if (statusItem) {
+            this._remove_actor_from_parent(statusItem.container);
+            if (statusItem !== this)
+                statusItem.destroy();
+        }
+        delete Main.panel.statusArea.AppTabs;
+        this._remove_panel_display_mode_toggle();
+    }
+
+    _remove_actor_from_parent(actor) {
+        if (actor?.get_parent())
+            actor.get_parent().remove_child(actor);
+    }
+
+    _apply_topbar_visibility(enteringStandalone) {
+        if (!enteringStandalone) {
+            this._restore_topbar_after_standalone();
+            return;
+        }
+
+        let shouldHide = this._settings.get_boolean(SchemaKeyConstants.HIDE_TOPBAR_IN_STANDALONE);
+        if (shouldHide) {
+            this._hide_topbar_for_standalone();
+        } else {
+            this._restore_topbar_after_standalone();
+        }
+    }
+
+    _get_topbar_panel_box() {
+        return Main.layoutManager.panelBox;
+    }
+
+    _get_topbar_height(panelBox) {
+        return panelBox?.get_height?.() ?? panelBox?.height ?? this._get_panel_height();
+    }
+
+    _get_hidden_topbar_y(panelBox) {
+        let anchorY = panelBox?.get_pivot_point?.()?.[1] ?? 0;
+        let deltaY = -this._get_topbar_height(panelBox);
+        if (anchorY < 0)
+            deltaY = -deltaY;
+        return this._topbar_base_y + deltaY;
+    }
+
+    _prepare_topbar_chrome_for_standalone(panelBox) {
+        if (this._topbar_chrome_adjusted)
+            return;
+
+        this._topbar_base_y = panelBox.y;
+        Main.layoutManager.removeChrome(panelBox);
+        Main.layoutManager.addChrome(panelBox, {
+            affectsStruts: false,
+            trackFullscreen: true,
+        });
+        this._topbar_chrome_adjusted = true;
+    }
+
+    _cancel_topbar_animation(panelBox) {
+        if (!this._topbar_animation_active)
+            return;
+
+        panelBox.remove_all_transitions?.();
+        this._topbar_animation_active = false;
+    }
+
+    _animate_topbar_to(panelBox, targetY, onComplete) {
+        this._cancel_topbar_animation(panelBox);
+        this._topbar_animation_active = true;
+        applyPanelBoxYTransition(panelBox, targetY, this._settings, () => {
+            this._topbar_animation_active = false;
+            onComplete?.();
+        });
+    }
+
+    _hide_topbar_for_standalone() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+
+        this._prepare_topbar_chrome_for_standalone(panelBox);
+        panelBox.show();
+        let hiddenY = this._get_hidden_topbar_y(panelBox);
+        this._animate_topbar_to(panelBox, hiddenY, () => {
+            panelBox.hide();
+            this._topbar_was_hidden = true;
+        });
+    }
+
+    _show_topbar_temporarily() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+
+        panelBox.show();
+        this._animate_topbar_to(panelBox, this._topbar_base_y);
+    }
+
+    _restore_topbar_after_standalone() {
+        let panelBox = this._get_topbar_panel_box();
+        if (!panelBox)
+            return;
+        if (!this._topbar_chrome_adjusted && !this._topbar_was_hidden)
+            return;
+
+        let finishRestore = () => {
+            if (this._topbar_chrome_adjusted) {
+                Main.layoutManager.removeChrome(panelBox);
+                Main.layoutManager.addChrome(panelBox, {
+                    affectsStruts: true,
+                    trackFullscreen: true,
+                });
+            }
+            this._topbar_chrome_adjusted = false;
+            this._topbar_was_hidden = false;
+        };
+
+        panelBox.show();
+        this._animate_topbar_to(panelBox, this._topbar_base_y, finishRestore);
+    }
+
+    _on_display_mode_setting_changed(settings, key) {
+        this._apply_display_mode_for_target_app();
+    }
+
+    _on_hide_topbar_setting_changed() {
+        if (this._display_mode === 'standalone')
+            this._apply_topbar_visibility(true);
+    }
+
+    _get_target_app_display_mode() {
+        let appId = this._target_app?.get_id?.() ?? '';
+        if (standaloneApplicationIncludes(this._standalone_applications, appId))
+            return 'standalone';
+        if (standaloneApplicationIncludes(this._panel_applications, appId))
+            return 'panel';
+
+        return this._settings.get_string(SchemaKeyConstants.DISPLAY_MODE);
+    }
+
+    _apply_display_mode_for_target_app() {
+        let targetMode = this._get_target_app_display_mode();
+        if (targetMode === this._display_mode)
+            return;
+
+        if (targetMode === 'standalone')
+            this._enter_standalone_mode();
+        else
+            this._enter_panel_mode();
     }
 
     destroy() {
@@ -277,6 +1332,17 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         this._tab_controls.clear_drag_placeholder();
         this._drag_placeholder = null;
+        this._recent_windows_menu?.destroy();
+        this._recent_windows_menu = null;
+        this._display_mode_menu?.destroy();
+        this._display_mode_menu = null;
+        this._fixed_standalone_menu_item = null;
+        this._fixed_panel_menu_item = null;
+        this._recent_windows_tooltip?.destroy();
+        this._recent_windows_tooltip = null;
+        this._recent_windows_scroll_view = null;
+        this._recent_windows_section = null;
+        this._pending_restore_snapshots = null;
 
         this._scroll_view?.disconnectObject(this);
         this._desktop_settings?.disconnectObject(this);
@@ -303,7 +1369,20 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._current_tabs_count = null;
         this._target_app = null;
         this._update_windows_later_id = null;
+        this._recent_windows_state = null;
+        this._standalone_applications = null;
+        this._panel_applications = null;
+        this._refreshing_display_mode_menu = false;
         this._tab_controls = null;
+        if (this._floating_bar) {
+            this._floating_bar.detachImmediate();
+            this._floating_bar.destroy();
+            this._floating_bar = null;
+        }
+        this._restore_topbar_after_standalone();
+        this._topbar_chrome_adjusted = false;
+        this._topbar_base_y = 0;
+        this._remove_from_panel_status_area();
         super.destroy();
     }
 
@@ -383,6 +1462,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
                 this._queue_update_windows_section.bind(this), this);
 
             this._update_windows_section(this._target_app);
+            this._apply_display_mode_for_target_app();
         }
     }
 
@@ -530,23 +1610,12 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
             // Detect when window is closed
             window.connectObject('unmanaged', () => {
+                this._record_recent_window_snapshot(app, window, 'closed');
                 let corresponding_tab = this._find_tab_by_window(window);
                 if (corresponding_tab) {
                     this._reset_tab(corresponding_tab);
                 } else {
                 }
-
-                window.connectObject('workspace-changed', () => {
-                    if (this.only_display_tabs_on_current_workspace) {
-                        this._force_update_tabs();
-                    }
-                }, this);
-                // Listener for workspace changes (if setting is active)
-                window.connectObject('workspace-changed', () => {
-                    if (this.only_display_tabs_on_current_workspace) {
-                        this._force_update_tabs();
-                    }
-                }, this);
             }, this);
 
             window.connectObject('workspace-changed', () => {
