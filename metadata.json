@@ -1,7 +1,7 @@
 {
   "gettext-domain": "app_tabs",
   "name": "Application Tabs Dev",
-  "description": "Panel will include a different window tab for the same application that is currently launched.\n1. You can see the application window intuitively\n2. Click tab to jump to or hide the corresponding window immediately.\n3. Click the Close button to close the window.\n4. Right click tab to show window function menu.\n5. Support drag and drop to rearrange the order of tabs.\nWelcome to submit questions and features to repository.",
+  "description": "Window tabs for the focused application in the GNOME top bar or on a draggable floating bar.\n\n• Panel mode: tabs in the top bar\n• Standalone mode: floating tab bar (optional hide top bar, slide animation)\n• Click tab to focus or minimize; close button and right-click window menu\n• Drag to reorder tabs; add-tab and recent-windows menus\n• Per-app fixed panel/standalone mode; customizable tab styles\n\nQuestions and feature requests: repository issue tracker.",
   "url": "https://github.com/hhoao/app_tabs",
   "uuid": "huanghaohhoa-dev@163.com",
   "settings-schema": "org.gnome.shell.extensions.app_tabs",

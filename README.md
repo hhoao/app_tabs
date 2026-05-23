@@ -1,16 +1,47 @@
 # App Tabs
 
-![](https://github.com/hhoao/app_tabs/blob/main/assets/external/img.png?raw=true)
+[简体中文](README.zh_CN.md)
+
+Panel mode — tabs live in the top bar:
+
+![](assets/external/img.png)
+
+Standalone mode — a floating tab bar above your windows (top bar can be hidden):
+
+![](assets/external/img2.png)
 
 ## Overview
 
-**AppTabs** is a Gnome extension that allows your panel to include tabs for different windows of launched applications.
+**App Tabs** is a GNOME Shell extension that shows one tab per window for the focused application. Switch windows from the top panel or from a draggable floating bar in standalone mode.
 
 ## Installation
-Clone this repository and copy it to path `.local/share/gnome-shell/extensions/`
+
+Clone this repository and copy it to `~/.local/share/gnome-shell/extensions/`, then enable the extension (Extensions app or `gnome-extensions enable huanghaohhoa-dev@163.com`).
+
+```bash
+glib-compile-schemas schemas/
+# Alt+F2 → r  (restart Shell) or log out and back in
+```
+
+## Display modes
+
+| Mode | Description |
+|------|-------------|
+| **Panel** | Tabs appear in the GNOME top bar, next to other panel items. |
+| **Standalone** | Tabs move to a floating bar you can drag anywhere on screen. |
+
+- **Default display mode** — chosen in extension preferences (panel or standalone).
+- **Mode toggle** — click the display-mode button on the tab bar; right-click for per-app fixed panel or standalone mode.
+- **Hide top bar in standalone** — slides the top bar away (similar to Hide Top Bar) so only the floating tabs remain.
+- **Display mode transitions** — optional fade and slide animations; duration is configurable (0–2000 ms).
 
 ## Configuration
-You can configure app tab style like this on preferences, and the style use the css grammar.
+
+Open **Extensions → App Tabs → Settings**.
+
+- **Panel max width**, **ellipsis on long titles**, **tabs on current workspace only**
+- **Add tab** and **recent windows** buttons
+- **App tab style** — JSON/CSS-like styles for default, active, hover, light and dark themes:
 
 ```json5
 {
@@ -26,25 +57,48 @@ You can configure app tab style like this on preferences, and the style use the 
     "hover_style": {}
   },
   "dark_mode": {
-    "default_style": {
-    },
+    "default_style": {},
     "active_style": {},
     "hover_style": {}
   }
 }
 ```
 
-## DEBUG
-Gnome Shell:
+- **Fixed standalone / panel applications** — always use one display mode for specific apps
+
+## Features
+
+1. See open windows as tabs for the current application.
+2. Click a tab to focus that window; click the active tab to minimize.
+3. Close button on each tab; right-click for window actions (pin, maximize, workspace, etc.).
+4. Drag tabs to reorder; order is remembered per application.
+5. **Panel** and **standalone** display modes with optional animations.
+6. Recent windows menu to reopen closed windows or switch across apps.
+7. **Add tab** opens a new window when the app supports it.
+
+If something breaks or you want a change, open an issue on the repository.
+
+## Recommended
+
+[CoverflowAltTab](https://github.com/dsheeler/CoverflowAltTab): bind **Alt+Tab** to applications and **Alt+Grave** to windows — works well with App Tabs.
+
+## Debug
+
+GNOME Shell logs:
+
 ```bash
 journalctl -f -o cat /usr/bin/gnome-shell
 ```
-For gnome shell 48:
+
+GNOME Shell 48 (nested):
+
 ```bash
 export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
 dbus-run-session -- gnome-shell --nested --wayland
 ```
-For gnome shell 49:
+
+GNOME Shell 49+ (devkit):
+
 ```bash
 export G_MESSAGES_DEBUG=all
 export MUTTER_DEBUG_DUMMY_MODE_SPECS=1366x768
@@ -52,28 +106,21 @@ export SHELL_DEBUG=all
 command -V mutter-devkit || sudo apt install mutter-dev-bin
 dbus-run-session gnome-shell --devkit --wayland
 ```
-```bash
-glib-compile-schemas schemas/
-```
+
 Preferences:
+
 ```bash
 journalctl -f -o cat /usr/bin/gjs
-gnome-extensions prefs huanghaohhoa@163.com
+gnome-extensions prefs huanghaohhoa-dev@163.com
 ```
 
-## Feature
-1. You can see the application window intuitively.
-2. Click tab to jump to the corresponding window immediately or hide window for active tab.
-3. Click the Close button to close the window.
-4. Right click tab to show window function menu.
-5. Support drag and drop to rearrange the order of tabs.
+Run tests:
 
-If the extension has any problems or needs improvement, you can go to the extension home page to ask questions, I will have time to check and solve them.
+```bash
+bash scripts/check.sh
+```
 
-## Recommended
+## Development
 
-[CoverflowAltTab](https://github.com/dsheeler/CoverflowAltTab): Alt-Tab switcher; in its settings bind **Alt+Tab** to applications and **Alt+Grave** to windows—works well with App Tabs.
-
-## Development Document
-* https://gjs-docs.gnome.org/
-* https://gjs.guide/guides/
+- https://gjs-docs.gnome.org/
+- https://gjs.guide/guides/
