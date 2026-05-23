@@ -108,6 +108,18 @@ export const PrefsStrings = {
     get hideTopbarInStandalone() {
         return _('Hide top bar in standalone mode');
     },
+    get enableDisplayModeTransition() {
+        return _('Animate display mode switching');
+    },
+    get enableDisplayModeTransitionDescription() {
+        return _('Fade the tab bar when switching between panel and standalone mode.');
+    },
+    get displayModeTransitionDuration() {
+        return _('Transition duration (ms)');
+    },
+    get displayModeTransitionDurationDescription() {
+        return _('Length of the fade in and fade out animation (0–2000 ms).');
+    },
     get fixedStandaloneApplications() {
         return _('Fixed standalone applications');
     },

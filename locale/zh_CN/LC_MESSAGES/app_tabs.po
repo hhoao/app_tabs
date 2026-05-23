@@ -154,6 +154,22 @@ msgid "Hide top bar in standalone mode"
 msgstr "独立模式下隐藏顶栏"
 
 #: src/locale/PrefsStrings.js:112
+msgid "Animate display mode switching"
+msgstr "显示模式切换动画"
+
+#: src/locale/PrefsStrings.js:115
+msgid "Fade the tab bar when switching between panel and standalone mode."
+msgstr "在面板模式与独立模式之间切换时淡入淡出标签栏。"
+
+#: src/locale/PrefsStrings.js:118
+msgid "Transition duration (ms)"
+msgstr "淡入淡出时长（毫秒）"
+
+#: src/locale/PrefsStrings.js:121
+msgid "Length of the fade in and fade out animation (0–2000 ms)."
+msgstr "淡入淡出动画的时长（0–2000 毫秒）。"
+
+#: src/locale/PrefsStrings.js:124
 msgid "Fixed standalone applications"
 msgstr "固定独立模式应用"
 

@@ -181,8 +181,14 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         group.add(show_add_tab_button_switch);
         const display_mode_row = this.get_display_mode_row(settings);
         const hide_topbar_in_standalone_row = this.get_hide_topbar_in_standalone_row(settings);
+        const [
+            enable_display_mode_transition_row,
+            display_mode_transition_duration_row,
+        ] = this.get_display_mode_transition_rows(settings);
         group.add(display_mode_row);
         group.add(hide_topbar_in_standalone_row);
+        group.add(enable_display_mode_transition_row);
+        group.add(display_mode_transition_duration_row);
         return group;
     }
     get_max_width_row(settings) {
@@ -284,6 +290,52 @@ export default class ApplicationTabPreferences extends ExtensionPreferences {
         row.add_suffix(combo);
         row.activatable_widget = combo;
         return row;
+    }
+
+    get_display_mode_transition_rows(settings) {
+        const enableKey = SchemaKeyConstants.ENABLE_DISPLAY_MODE_TRANSITION;
+        const durationKey = SchemaKeyConstants.DISPLAY_MODE_TRANSITION_DURATION;
+        const enableSwitch = new Gtk.Switch({
+            active: settings.get_boolean(enableKey),
+            valign: Gtk.Align.CENTER,
+        });
+        settings.bind(enableKey, enableSwitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        const durationSpin = new Gtk.SpinButton({
+            valign: Gtk.Align.CENTER,
+            climb_rate: 1,
+            digits: 0,
+            snap_to_ticks: true,
+            adjustment: new Gtk.Adjustment({
+                lower: 0,
+                upper: 2000,
+                step_increment: 50,
+                page_increment: 100,
+            }),
+        });
+        settings.bind(durationKey, durationSpin, 'value', Gio.SettingsBindFlags.DEFAULT);
+
+        const enableRow = new Adw.ActionRow({
+            title: PrefsStrings.enableDisplayModeTransition,
+            subtitle: PrefsStrings.enableDisplayModeTransitionDescription,
+        });
+        enableRow.add_suffix(enableSwitch);
+        enableRow.activatable_widget = enableSwitch;
+
+        const durationRow = new Adw.ActionRow({
+            title: PrefsStrings.displayModeTransitionDuration,
+            subtitle: PrefsStrings.displayModeTransitionDurationDescription,
+        });
+        durationRow.add_suffix(durationSpin);
+        durationRow.activatable_widget = durationSpin;
+
+        const syncDurationSensitivity = () => {
+            durationRow.sensitive = enableSwitch.active;
+        };
+        enableSwitch.connect('notify::active', syncDurationSensitivity);
+        syncDurationSensitivity();
+
+        return [enableRow, durationRow];
     }
 
     get_hide_topbar_in_standalone_row(settings) {

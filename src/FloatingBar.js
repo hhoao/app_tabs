@@ -4,6 +4,7 @@ import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { SchemaKeyConstants } from '../src/config/SchemaKeyConstants.js';
+import { applyOpacityTransition } from './utils/DisplayModeTransition.js';
 
 const DEFAULT_POSITION = '{"x":0,"y":0}';
 const DEFAULT_BAR_WIDTH = 200;
@@ -180,12 +181,7 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
             this.set_position(pos.x, pos.y);
         }
 
-        this.remove_transition('opacity');
-        this.ease({
-            opacity: 255,
-            duration: 200,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
+        applyOpacityTransition(this, 255, this._settings);
     }
 
     detach() {

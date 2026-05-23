@@ -24,6 +24,7 @@ import {
     shouldUseCommandForRestore,
 } from './utils/ProcessLaunchContext.js';
 import { FloatingBar } from './FloatingBar.js';
+import { applyOpacityTransition } from './utils/DisplayModeTransition.js';
 import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
 import {
     addOrUpdateStandaloneApplication,
@@ -984,15 +985,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_controls.set_display_mode_icon('standalone');
         this._apply_topbar_visibility(true);
 
-        this.remove_transition('opacity');
-        this.ease({
-            opacity: 0,
-            duration: 200,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            onComplete: () => {
-                if (this._display_mode === 'standalone')
-                    this.hide();
-            },
+        applyOpacityTransition(this, 0, this._settings, () => {
+            if (this._display_mode === 'standalone')
+                this.hide();
         });
     }
 
@@ -1018,13 +1013,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_panel_container.show();
         this._tab_controls.set_display_mode_icon('panel');
 
-        this.remove_transition('opacity');
         this.opacity = 0;
-        this.ease({
-            opacity: 255,
-            duration: 200,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-        });
+        applyOpacityTransition(this, 255, this._settings);
     }
 
     attach_panel_display_mode_toggle() {

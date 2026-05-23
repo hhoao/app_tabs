@@ -11,6 +11,8 @@ export const SchemaKeyConstants = {
     RECENT_WINDOWS_STATE: "recent-windows-state",
     DISPLAY_MODE: "display-mode",
     HIDE_TOPBAR_IN_STANDALONE: "hide-topbar-in-standalone",
+    ENABLE_DISPLAY_MODE_TRANSITION: "enable-display-mode-transition",
+    DISPLAY_MODE_TRANSITION_DURATION: "display-mode-transition-duration",
     STANDALONE_BAR_POSITION: "standalone-bar-position",
     STANDALONE_APPLICATIONS: "standalone-applications",
     PANEL_APPLICATIONS: "panel-applications",
