@@ -1,9 +1,9 @@
 {
   "gettext-domain": "app_tabs",
-  "name": "Application Tabs Dev",
+  "name": "Application Tabs",
   "description": "Window tabs for the focused application in the GNOME top bar or on a draggable floating bar.\n\n• Panel mode: tabs in the top bar\n• Standalone mode: floating tab bar (optional hide top bar, slide animation)\n• Click tab to focus or minimize; close button and right-click window menu\n• Drag to reorder tabs; add-tab and recent-windows menus\n• Per-app fixed panel/standalone mode; customizable tab styles\n\nQuestions and feature requests: repository issue tracker.",
   "url": "https://github.com/hhoao/app_tabs",
-  "uuid": "huanghaohhoa-dev@163.com",
+  "uuid": "huanghaohhoa@163.com",
   "settings-schema": "org.gnome.shell.extensions.app_tabs",
   "shell-version": ["50"]
 }
