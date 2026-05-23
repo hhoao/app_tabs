@@ -64,17 +64,20 @@ test('FloatingBar provides a dedicated drag handle for manual positioning', () =
         'expected manual drag to switch FloatingBar out of automatic centering');
 });
 
-test('TabPanel clears panel statusArea before re-registering after standalone mode', () => {
+test('TabPanel keeps statusArea registration across display mode switches', () => {
     let source = readSource('./src/TabPanel.js');
 
-    assert(source.includes("_remove_from_panel_status_area()"),
-        'expected TabPanel to remove itself from panel statusArea safely');
-    assert(source.includes("Main.panel.statusArea.AppTabs = null") ||
-        source.includes("delete Main.panel.statusArea.AppTabs"),
-        'expected TabPanel to clear the AppTabs statusArea slot before addToStatusArea');
-    assert(source.includes("this._remove_from_panel_status_area();") &&
-        source.includes("Main.panel.addToStatusArea('AppTabs', this"),
-        'expected panel restoration to clear stale statusArea before re-adding');
+    assert(source.includes('_hide_panel_status_items()') &&
+        source.includes('_ensure_app_tabs_in_status_area()'),
+        'expected mode switches to hide/show panel items instead of unregistering');
+    assert(source.includes('_enter_standalone_mode()') &&
+        source.includes('this._hide_panel_status_items();'),
+        'expected standalone entry to hide panel status items');
+    assert(source.includes('_enter_panel_mode()') &&
+        source.includes('this._ensure_app_tabs_in_status_area();'),
+        'expected panel entry to register only when missing');
+    assert(!source.includes('this._remove_from_panel_status_area();\n        Main.panel.addToStatusArea'),
+        'expected panel restoration not to tear down and re-add on every switch');
 });
 
 test('TabPanel clears stale AppTabs statusArea entries from previous instances', () => {
@@ -89,18 +92,17 @@ test('TabPanel clears stale AppTabs statusArea entries from previous instances',
         'expected TabPanel to clear the AppTabs statusArea slot unconditionally before re-adding');
 });
 
-test('TabPanel removes panel wrapper containers before re-adding status items', () => {
+test('TabPanel removes stale panel wrappers only during registration cleanup', () => {
     let source = readSource('./src/TabPanel.js');
 
     assert(source.includes('_remove_actor_from_parent(actor)'),
         'expected TabPanel to centralize actor parent removal');
-    assert(source.includes('this._remove_actor_from_parent(this.container);'),
-        'expected TabPanel to remove the PanelMenu wrapper before re-adding');
     assert(!source.includes('this._remove_actor_from_parent(this);'),
         'expected TabPanel not to remove itself from its own PanelMenu container');
     assert(source.includes('this._remove_actor_from_parent(statusItem.container);'),
         'expected stale AppTabs cleanup to remove the wrapper container');
-    assert(source.includes('this.container?.show();'),
+    assert(source.includes('_show_panel_status_items()') &&
+        source.includes('this.container?.show();'),
         'expected panel restore to show the PanelMenu wrapper container');
 });
 
