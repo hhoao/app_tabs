@@ -158,8 +158,8 @@ msgid "Animate display mode switching"
 msgstr "显示模式切换动画"
 
 #: src/locale/PrefsStrings.js:115
-msgid "Fade the tab bar when switching between panel and standalone mode."
-msgstr "在面板模式与独立模式之间切换时淡入淡出标签栏。"
+msgid "Fade the panel tab bar and floating bar when switching display modes."
+msgstr "切换显示模式时，对面板标签栏与独立浮动条进行淡入淡出。"
 
 #: src/locale/PrefsStrings.js:118
 msgid "Transition duration (ms)"

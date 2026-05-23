@@ -64,6 +64,23 @@ test('FloatingBar provides a dedicated drag handle for manual positioning', () =
         'expected manual drag to switch FloatingBar out of automatic centering');
 });
 
+test('TabPanel reparents tabs to panel before floating bar detach finishes', () => {
+    let source = readSource('./src/TabPanel.js');
+    let enterPanelStart = source.indexOf('_enter_panel_mode() {');
+    let enterPanelEnd = source.indexOf('\n    _reparent_tab_panel_container_to_panel()', enterPanelStart);
+    let enterPanelSource = source.slice(enterPanelStart, enterPanelEnd);
+
+    assert(source.includes('_reparent_tab_panel_container_to_panel()') &&
+        source.includes('let panelContainer = this.container'),
+        'expected panel reparenting to compare against PanelMenu container');
+    assert(enterPanelSource.includes('this._reparent_tab_panel_container_to_panel();') &&
+        enterPanelSource.includes('this._floating_bar.detach'),
+        'expected tabs to return to panel before floating bar fade-out completes');
+    assert(source.includes('_finalize_panel_mode_entry()') &&
+        !source.includes('_complete_panel_mode_entry()'),
+        'expected panel entry finalization without deferred reparenting');
+});
+
 test('TabPanel keeps statusArea registration across display mode switches', () => {
     let source = readSource('./src/TabPanel.js');
 
@@ -120,21 +137,24 @@ test('panel mode keeps the display mode toggle outside the original tabs contain
         'expected extension enable to attach the separate toggle in panel mode');
 });
 
-test('standalone topbar hiding moves panelBox without toggling panel visibility', () => {
+test('standalone topbar hiding slides panelBox like hidetopbar', () => {
     let source = readSource('./src/TabPanel.js');
-    let visibilityStart = source.indexOf('_apply_topbar_visibility(enteringStandalone)');
-    let visibilityEnd = source.indexOf('_on_display_mode_setting_changed', visibilityStart);
-    let visibilitySource = source.slice(visibilityStart, visibilityEnd);
+    let hideStart = source.indexOf('_hide_topbar_for_standalone() {');
+    let hideEnd = source.indexOf('_show_topbar_temporarily() {', hideStart);
+    let hideSource = source.slice(hideStart, hideEnd);
+    let transitionHelper = readSource('./src/utils/DisplayModeTransition.js');
 
     assert(source.includes('_hide_topbar_for_standalone()') &&
         source.includes('_restore_topbar_after_standalone()'),
         'expected standalone topbar visibility to use dedicated panelBox helpers');
-    assert(source.includes('Main.layoutManager.panelBox'),
-        'expected standalone topbar hiding to manipulate layoutManager.panelBox');
+    assert(source.includes('applyPanelBoxYTransition') &&
+        transitionHelper.includes('panelBox.ease({') &&
+        hideSource.includes('_animate_topbar_to(panelBox, hiddenY,'),
+        'expected topbar hide to slide panelBox with ease animation');
     assert(source.includes('affectsStruts: false'),
         'expected hidden standalone topbar not to reserve workspace struts');
-    assert(!visibilitySource.includes('Main.panel.hide()') &&
-        !visibilitySource.includes('Main.panel.show()'),
+    assert(!hideSource.includes('Main.panel.hide()') &&
+        !hideSource.includes('Main.panel.show()'),
         'expected topbar visibility changes not to hide or show Main.panel directly');
 });
 

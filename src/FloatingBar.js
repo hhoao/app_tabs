@@ -184,7 +184,25 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
         applyOpacityTransition(this, 255, this._settings);
     }
 
-    detach() {
+    detach(onComplete = null) {
+        if (!this.get_parent()) {
+            this._finish_detach();
+            onComplete?.();
+            return;
+        }
+
+        applyOpacityTransition(this, 0, this._settings, () => {
+            this._finish_detach();
+            onComplete?.();
+        });
+    }
+
+    detachImmediate() {
+        this.remove_transition?.('opacity');
+        this._finish_detach();
+    }
+
+    _finish_detach() {
         if (!this._using_default_position)
             this._save_position();
 
@@ -213,22 +231,7 @@ export const FloatingBar = GObject.registerClass({}, class FloatingBar extends S
     }
 
     destroy() {
-        if (this._position_later_id) {
-            GLib.Source.remove(this._position_later_id);
-            this._position_later_id = 0;
-        }
-        if (this._allocation_changed_id) {
-            this.disconnect(this._allocation_changed_id);
-            this._allocation_changed_id = 0;
-        }
-        if (this._motionId) {
-            global.stage.disconnect(this._motionId);
-            this._motionId = null;
-        }
-        if (this._releaseId) {
-            global.stage.disconnect(this._releaseId);
-            this._releaseId = null;
-        }
+        this.detachImmediate();
         this._drag_handle?.destroy();
         this._drag_handle = null;
         this._tabPanel = null;

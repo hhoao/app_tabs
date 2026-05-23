@@ -112,7 +112,7 @@ export const PrefsStrings = {
         return _('Animate display mode switching');
     },
     get enableDisplayModeTransitionDescription() {
-        return _('Fade the tab bar when switching between panel and standalone mode.');
+        return _('Fade the tab bar and slide the top bar when switching display modes.');
     },
     get displayModeTransitionDuration() {
         return _('Transition duration (ms)');

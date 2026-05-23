@@ -24,7 +24,10 @@ import {
     shouldUseCommandForRestore,
 } from './utils/ProcessLaunchContext.js';
 import { FloatingBar } from './FloatingBar.js';
-import { applyOpacityTransition } from './utils/DisplayModeTransition.js';
+import {
+    applyOpacityTransition,
+    applyPanelBoxYTransition,
+} from './utils/DisplayModeTransition.js';
 import { AppTabMenuStrings } from './locale/AppTabMenuStrings.js';
 import {
     addOrUpdateStandaloneApplication,
@@ -82,6 +85,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._topbar_was_hidden = false;
         this._topbar_chrome_adjusted = false;
         this._topbar_base_y = 0;
+        this._topbar_animation_active = false;
         this._switching_display_mode = false;
         this._refreshing_display_mode_menu = false;
 
@@ -937,8 +941,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._tab_controls.set_display_mode_icon('standalone');
         this._apply_topbar_visibility(true);
 
-        this.opacity = 0;
-        this.hide();
+        this._hide_empty_panel_shell();
     }
 
     toggle_display_mode() {
@@ -987,7 +990,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
         applyOpacityTransition(this, 0, this._settings, () => {
             if (this._display_mode === 'standalone')
-                this.hide();
+                this._hide_empty_panel_shell();
         });
     }
 
@@ -998,23 +1001,61 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._display_mode = 'panel';
 
         this._apply_topbar_visibility(false);
+        this._reparent_tab_panel_container_to_panel();
 
-        if (this._floating_bar) {
-            let container = this._tab_panel_container;
-            if (container.get_parent())
-                container.get_parent().remove_child(container);
+        if (this._floating_bar)
             this._floating_bar.detach();
-            this.add_child(container);
-        }
+
+        this._finalize_panel_mode_entry();
+    }
+
+    _reparent_tab_panel_container_to_panel() {
+        let container = this._tab_panel_container;
+        let panelContainer = this.container;
+        let parent = container.get_parent();
+
+        if (parent === panelContainer)
+            return;
+
+        if (parent)
+            parent.remove_child(container);
+
+        this.add_child(container);
+    }
+
+    _finalize_panel_mode_entry() {
+        if (!this._tab_panel_container.get_parent())
+            this._reparent_tab_panel_container_to_panel();
 
         this._ensure_app_tabs_in_status_area();
         this.attach_panel_display_mode_toggle();
         this._show_panel_status_items();
-        this._tab_panel_container.show();
+        this._refresh_visible_tabs_after_mode_change();
         this._tab_controls.set_display_mode_icon('panel');
 
+        this.remove_transition?.('opacity');
         this.opacity = 0;
         applyOpacityTransition(this, 255, this._settings);
+    }
+
+    _hide_empty_panel_shell() {
+        this.container?.hide();
+    }
+
+    _refresh_visible_tabs_after_mode_change() {
+        for (let i = 0; i < this._current_tabs_count; i++) {
+            let tab = this._tabs_pool[i];
+            tab.remove_all_transitions?.();
+            tab.opacity = 255;
+            tab.show();
+        }
+        this._tab_panel_container.show();
+        this._scroll_view.show();
+        this._tab_controls.actor.show();
+        this._tab_controls.refresh_active_state();
+
+        if (this._target_app)
+            this._update_windows_section(this._target_app);
     }
 
     attach_panel_display_mode_toggle() {
@@ -1048,13 +1089,13 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
     _hide_panel_status_items() {
         this._hide_panel_display_mode_toggle();
-        this.container?.hide();
-        this.hide();
+        this._hide_empty_panel_shell();
     }
 
     _show_panel_status_items() {
-        this.container?.show();
         this.show();
+        this.container?.show();
+        this._tab_panel_container?.show();
         this._panel_display_mode_toggle?.show();
     }
 
@@ -1175,16 +1216,35 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._topbar_chrome_adjusted = true;
     }
 
+    _cancel_topbar_animation(panelBox) {
+        if (!this._topbar_animation_active)
+            return;
+
+        panelBox.remove_all_transitions?.();
+        this._topbar_animation_active = false;
+    }
+
+    _animate_topbar_to(panelBox, targetY, onComplete) {
+        this._cancel_topbar_animation(panelBox);
+        this._topbar_animation_active = true;
+        applyPanelBoxYTransition(panelBox, targetY, this._settings, () => {
+            this._topbar_animation_active = false;
+            onComplete?.();
+        });
+    }
+
     _hide_topbar_for_standalone() {
         let panelBox = this._get_topbar_panel_box();
         if (!panelBox)
             return;
 
         this._prepare_topbar_chrome_for_standalone(panelBox);
-        panelBox.remove_all_transitions?.();
-        panelBox.y = this._get_hidden_topbar_y(panelBox);
-        panelBox.hide();
-        this._topbar_was_hidden = true;
+        panelBox.show();
+        let hiddenY = this._get_hidden_topbar_y(panelBox);
+        this._animate_topbar_to(panelBox, hiddenY, () => {
+            panelBox.hide();
+            this._topbar_was_hidden = true;
+        });
     }
 
     _show_topbar_temporarily() {
@@ -1192,9 +1252,8 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (!panelBox)
             return;
 
-        panelBox.remove_all_transitions?.();
         panelBox.show();
-        panelBox.y = this._topbar_base_y;
+        this._animate_topbar_to(panelBox, this._topbar_base_y);
     }
 
     _restore_topbar_after_standalone() {
@@ -1204,18 +1263,20 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         if (!this._topbar_chrome_adjusted && !this._topbar_was_hidden)
             return;
 
-        panelBox.remove_all_transitions?.();
+        let finishRestore = () => {
+            if (this._topbar_chrome_adjusted) {
+                Main.layoutManager.removeChrome(panelBox);
+                Main.layoutManager.addChrome(panelBox, {
+                    affectsStruts: true,
+                    trackFullscreen: true,
+                });
+            }
+            this._topbar_chrome_adjusted = false;
+            this._topbar_was_hidden = false;
+        };
+
         panelBox.show();
-        panelBox.y = this._topbar_base_y;
-        if (this._topbar_chrome_adjusted) {
-            Main.layoutManager.removeChrome(panelBox);
-            Main.layoutManager.addChrome(panelBox, {
-                affectsStruts: true,
-                trackFullscreen: true,
-            });
-        }
-        this._topbar_chrome_adjusted = false;
-        this._topbar_was_hidden = false;
+        this._animate_topbar_to(panelBox, this._topbar_base_y, finishRestore);
     }
 
     _on_display_mode_setting_changed(settings, key) {
@@ -1239,6 +1300,9 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
 
     _apply_display_mode_for_target_app() {
         let targetMode = this._get_target_app_display_mode();
+        if (targetMode === this._display_mode)
+            return;
+
         if (targetMode === 'standalone')
             this._enter_standalone_mode();
         else
@@ -1311,7 +1375,7 @@ export const TabPanel = GObject.registerClass({}, class TabPanel extends PanelMe
         this._refreshing_display_mode_menu = false;
         this._tab_controls = null;
         if (this._floating_bar) {
-            this._floating_bar.detach();
+            this._floating_bar.detachImmediate();
             this._floating_bar.destroy();
             this._floating_bar = null;
         }

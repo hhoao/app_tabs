@@ -39,13 +39,21 @@ test('display mode transitions read settings through shared helper', () => {
     let prefs = readSource('./prefs.js');
 
     assert(helper.includes('getDisplayModeTransitionDuration') &&
-        helper.includes('applyOpacityTransition'),
+        helper.includes('applyOpacityTransition') &&
+        helper.includes('applyPanelBoxYTransition'),
         'expected shared transition helper');
     assert(tabPanel.includes("applyOpacityTransition(this, 0, this._settings") &&
         tabPanel.includes("applyOpacityTransition(this, 255, this._settings"),
         'expected TabPanel to use shared opacity transitions');
-    assert(floatingBar.includes('applyOpacityTransition(this, 255, this._settings)'),
-        'expected FloatingBar attach to use shared opacity transitions');
+    assert(floatingBar.includes('applyOpacityTransition(this, 255, this._settings)') &&
+        floatingBar.includes('applyOpacityTransition(this, 0, this._settings') &&
+        floatingBar.includes('detach(onComplete = null)') &&
+        floatingBar.includes('detachImmediate()'),
+        'expected FloatingBar attach and detach to use shared opacity transitions');
+    assert(tabPanel.includes('this._reparent_tab_panel_container_to_panel();') &&
+        tabPanel.includes('this._floating_bar.detach()') &&
+        tabPanel.includes('this._finalize_panel_mode_entry();'),
+        'expected panel mode to reparent tabs and finalize immediately while floating bar fades out');
     assert(prefs.includes('get_display_mode_transition_rows') &&
         prefs.includes('SchemaKeyConstants.ENABLE_DISPLAY_MODE_TRANSITION') &&
         prefs.includes('SchemaKeyConstants.DISPLAY_MODE_TRANSITION_DURATION'),
